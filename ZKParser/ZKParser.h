@@ -8,6 +8,30 @@
 
 #import <Foundation/Foundation.h>
 
-@interface ZKParser : NSObject
+@interface ZKParserInput : NSObject
+
++(ZKParserInput *)withInput:(NSString *)s;
+
+-(NSUInteger)length;
+-(NSString *)value;
+
+-(BOOL)consumeString:(NSString *)s;
+-(BOOL)consumeCharacterSet:(NSCharacterSet *)s;
+
+-(void)rewindTo:(NSUInteger)pos;
+
+@end
+
+typedef NSObject *(^ZKParser)(ZKParserInput*);
+
+@interface ZKParserFactory : NSObject
++(ZKParser)whitespace;
++(ZKParser)exactly:(NSString *)s onMatch:(NSObject *(^)(NSString *))block;
+
++(ZKParser)seq:(NSArray *)items;
++(ZKParser)oneOf:(NSArray *)items;  // NSFastEnumeration ? // onMatch version
++(ZKParser)oneOrMore:(ZKParser)p;
+
++(NSObject *)parse:(ZKParser)parser input:(NSString *)input;
 
 @end
