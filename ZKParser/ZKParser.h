@@ -32,6 +32,6 @@ typedef NSObject *(^ZKParser)(ZKParserInput*);
 +(ZKParser)oneOf:(NSArray *)items;  // NSFastEnumeration ? // onMatch version
 +(ZKParser)oneOrMore:(ZKParser)p;
 
-+(NSObject *)parse:(ZKParser)parser input:(NSString *)input;
++(NSObject *)parse:(ZKParser)parser input:(NSString *)input error:(NSError **)err;
 
 @end

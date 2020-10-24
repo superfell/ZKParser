@@ -126,9 +126,15 @@
     };
 }
 
-+(NSObject *)parse:(ZKParser)parser input:(NSString *)input {
++(NSObject *)parse:(ZKParser)parser input:(NSString *)input error:(NSError **)err {
     ZKParserInput *i = [ZKParserInput withInput:input];
-    return parser(i);
+    NSObject *res = parser(i);
+    if (i.length > 0) {
+        NSString *msg = [NSString stringWithFormat:@"Unexpected input '%@' at position %lu", i.value, (unsigned long)i.pos];
+        *err = [NSError errorWithDomain:@"Parser" code:-1 userInfo:@{NSLocalizedDescriptionKey:msg, @"Position":@(i.pos)}];
+        return nil;
+    }
+    return res;
 }
 
 @end

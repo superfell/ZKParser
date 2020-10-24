@@ -28,12 +28,18 @@
         XCTAssertEqualObjects(m, @"Bob");
         return @"Alice";
     }];
-    NSObject *r = [ZKParserFactory parse:p input:@"Bob"];
+    NSError *err = nil;
+    NSObject *r = [ZKParserFactory parse:p input:@"Bob" error:&err];
+    XCTAssertNil(err);
     XCTAssertEqualObjects(r,  @"Alice");
-    XCTAssertNil([ZKParserFactory parse:p input:@"Eve"]);
-    XCTAssertNil([ZKParserFactory parse:p input:@"Bo"]);
-    XCTAssertNil([ZKParserFactory parse:p input:@"Boc"]);
-    XCTAssertNil([ZKParserFactory parse:p input:@"Alice"]);
+    XCTAssertNil([ZKParserFactory parse:p input:@"Eve" error:&err]);
+    XCTAssertNil(err);
+    XCTAssertNil([ZKParserFactory parse:p input:@"Bo" error:&err]);
+    XCTAssertNil(err);
+    XCTAssertNil([ZKParserFactory parse:p input:@"Boc" error:&err]);
+    XCTAssertNil(err);
+    XCTAssertNil([ZKParserFactory parse:p input:@"Alice" error:&err]);
+    XCTAssertNil(err);
 }
 
 -(void)testOneOf {
@@ -47,10 +53,11 @@
         return @"BB";
     }];
     ZKParser n = [ZKParserFactory oneOf:@[bobby,bob,eve]];
-    XCTAssertEqualObjects(@"B", [ZKParserFactory parse:n input:@"Bob"]);
-    XCTAssertEqualObjects(@"E", [ZKParserFactory parse:n input:@"Eve"]);
-    XCTAssertEqualObjects(@"BB", [ZKParserFactory parse:n input:@"Bobby"]);
-    XCTAssertNil([ZKParserFactory parse:n input:@"Alice"]);
+    NSError *err = nil;
+    XCTAssertEqualObjects(@"B", [ZKParserFactory parse:n input:@"Bob" error:&err]);
+    XCTAssertEqualObjects(@"E", [ZKParserFactory parse:n input:@"Eve" error:&err]);
+    XCTAssertEqualObjects(@"BB", [ZKParserFactory parse:n input:@"Bobby" error:&err]);
+    XCTAssertNil([ZKParserFactory parse:n input:@"Alice" error:&err]);
 }
 
 -(void)testSeq {
@@ -65,9 +72,10 @@
     }];
     ZKParser n = [ZKParserFactory seq:@[bob,eve,bobby]];
     NSObject *exp = @[@"B",@"E",@"BB"];
-    XCTAssertEqualObjects(exp, [ZKParserFactory parse:n input:@"BobEveBobby"]);
-    XCTAssertNil([ZKParserFactory parse:n input:@"BobEveBobbx"]);
-    XCTAssertNil([ZKParserFactory parse:n input:@"AliceBobEveBobby"]);
+    NSError *err = nil;
+    XCTAssertEqualObjects(exp, [ZKParserFactory parse:n input:@"BobEveBobby" error:&err]);
+    XCTAssertNil([ZKParserFactory parse:n input:@"BobEveBobbx" error:&err]);
+    XCTAssertNil([ZKParserFactory parse:n input:@"AliceBobEveBobby" error:&err]);
 }
 
 -(void)testWhitespace {
