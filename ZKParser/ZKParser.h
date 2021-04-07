@@ -7,53 +7,35 @@
 //
 
 #import <Foundation/Foundation.h>
+#import "ZKParserInput.h"
 
-typedef enum ZKCaseSensitivity {
-    CaseSensitive,
-    CaseInsensitive,
-} ZKCaseSensitivity;
+@interface ZKParser : NSObject
+-(NSObject *)parse:(ZKParserInput*)input error:(NSError **)err;
 
-@class ZKParserInput;
-
-typedef NSObject *(^ZKParser)(ZKParserInput*, NSError **);
-
-@interface NSString(ZKParsing)
--(NSObject*)parse:(ZKParser)p error:(NSError **)err;
-@end
-
-@interface ZKParserInput : NSObject
-
-+(ZKParserInput *)withInput:(NSString *)s;
-
--(NSUInteger)length;
--(NSString *)value;
-
--(NSString *)consumeString:(NSString *)s caseSensitive:(ZKCaseSensitivity)cs;
--(BOOL)consumeCharacterSet:(NSCharacterSet *)s;
-
--(void)rewindTo:(NSUInteger)pos;
-
--(NSObject *)parse:(ZKParser)parser error:(NSError **)err;
-
+-(ZKParser*)or:(NSArray<ZKParser*>*)otherParser;
+-(ZKParser*)and:(NSArray<ZKParser*>*)otherParsers;
 @end
 
 @interface ZKParserFactory : NSObject
 
 @property(assign,nonatomic) ZKCaseSensitivity defaultCaseSensitivity;
 
--(ZKParser)whitespace;
--(ZKParser)maybeWhitespace;
--(ZKParser)exactly:(NSString *)s;    // case sensitive set by defaultCaseSensitivity
--(ZKParser)exactly:(NSString *)s case:(ZKCaseSensitivity)c;
--(ZKParser)exactly:(NSString *)s case:(ZKCaseSensitivity)c onMatch:(NSObject *(^)(NSString *))block;
--(ZKParser)characters:(NSCharacterSet*)set name:(NSString *)name min:(NSUInteger)minMatches;
+-(ZKParser*)whitespace;
+-(ZKParser*)maybeWhitespace;
+-(ZKParser*)exactly:(NSString *)s;    // case sensitive set by defaultCaseSensitivity
+-(ZKParser*)exactly:(NSString *)s case:(ZKCaseSensitivity)c;
+-(ZKParser*)exactly:(NSString *)s case:(ZKCaseSensitivity)c onMatch:(NSObject *(^)(NSString *))block;
+-(ZKParser*)characters:(NSCharacterSet*)set name:(NSString *)name min:(NSUInteger)minMatches;
 
--(ZKParser)seq:(NSArray<ZKParser>*)items;
--(ZKParser)seq:(NSArray<ZKParser>*)items onMatch:(NSObject *(^)(NSArray *))block;
--(ZKParser)oneOf:(NSArray<ZKParser>*)items;  // NSFastEnumeration ? // onMatch version
--(ZKParser)oneOrMore:(ZKParser)p;
--(ZKParser)zeroOrMore:(ZKParser)p;
+-(ZKParser*)seq:(NSArray<ZKParser*>*)items;
+-(ZKParser*)seq:(NSArray<ZKParser*>*)items onMatch:(NSObject *(^)(NSArray *))block;
 
--(ZKParser)map:(ZKParser)p onMatch:(NSObject *(^)(NSObject *))block;
+-(ZKParser*)oneOf:(NSArray<ZKParser*>*)items;  // NSFastEnumeration ? // onMatch version
+-(ZKParser*)oneOf:(NSArray<ZKParser*>*)items onMatch:(NSObject *(^)(NSObject *))block;
+
+-(ZKParser*)oneOrMore:(ZKParser*)p;
+-(ZKParser*)zeroOrMore:(ZKParser*)p;
+
+-(ZKParser*)map:(ZKParser*)p onMatch:(NSObject *(^)(NSObject *))block;
 
 @end

@@ -27,7 +27,7 @@ ZKParserFactory *f = nil;
 }
 
 -(void)testExactMatch {
-    ZKParser p = [f exactly:@"Bob" case:CaseSensitive onMatch:^NSObject *(NSString *m) {
+    ZKParser* p = [f exactly:@"Bob" case:CaseSensitive onMatch:^NSObject *(NSString *m) {
         XCTAssertEqualObjects(m, @"Bob");
         return @"Alice";
     }];
@@ -46,7 +46,7 @@ ZKParserFactory *f = nil;
 }
 
 -(void)testCaseInsensitiveMatch {
-    ZKParser p = [f exactly:@"alice" case:CaseInsensitive];
+    ZKParser* p = [f exactly:@"alice" case:CaseInsensitive];
     NSError *err = nil;
     XCTAssertEqualObjects(@"ALICE", [@"ALICE" parse:p error:&err]);
     XCTAssertNil(err);    
@@ -57,13 +57,13 @@ ZKParserFactory *f = nil;
 }
 
 -(void)testDefaultCaseSensitivity {
-    ZKParser p = [f exactly:@"bob"];
+    ZKParser* p = [f exactly:@"bob"];
     NSError *err = nil;
     XCTAssertEqualObjects(@"bob", [@"bob" parse:p error:&err]);
     XCTAssertNil([@"boB" parse:p error:&err]);
     XCTAssertEqualObjects(@"expecting 'bob' at position 1", err.localizedDescription);
     f.defaultCaseSensitivity = CaseInsensitive;
-    ZKParser i = [f exactly:@"bob"];
+    ZKParser* i = [f exactly:@"bob"];
     XCTAssertEqualObjects(@"bob", [@"bob" parse:i error:&err]);
     XCTAssertEqualObjects(@"Bob", [@"Bob" parse:i error:&err]);
     XCTAssertEqualObjects(@"BOB", [@"BOB" parse:i error:&err]);
@@ -74,16 +74,16 @@ ZKParserFactory *f = nil;
 }
 
 -(void)testOneOf {
-    ZKParser bob = [f exactly:@"Bob" case:CaseSensitive onMatch:^NSObject *(NSString *m) {
+    ZKParser* bob = [f exactly:@"Bob" case:CaseSensitive onMatch:^NSObject *(NSString *m) {
         return @"B";
     }];
-    ZKParser eve = [f exactly:@"Eve" case:CaseSensitive onMatch:^NSObject *(NSString *m) {
+    ZKParser* eve = [f exactly:@"Eve" case:CaseSensitive onMatch:^NSObject *(NSString *m) {
         return @"E";
     }];
-    ZKParser bobby = [f exactly:@"Bobby" case:CaseSensitive onMatch:^NSObject *(NSString *m) {
+    ZKParser* bobby = [f exactly:@"Bobby" case:CaseSensitive onMatch:^NSObject *(NSString *m) {
         return @"BB";
     }];
-    ZKParser p = [f oneOf:@[bobby,bob,eve]];
+    ZKParser* p = [f oneOf:@[bobby,bob,eve]];
     NSError *err = nil;
     XCTAssertEqualObjects(@"B", [@"Bob"  parse:p error:&err]);
     XCTAssertEqualObjects(@"E", [@"Eve"  parse:p error:&err]);
@@ -92,16 +92,16 @@ ZKParserFactory *f = nil;
 }
 
 -(void)testSeq {
-    ZKParser bob = [f exactly:@"Bob" case:CaseSensitive onMatch:^NSObject *(NSString *m) {
+    ZKParser* bob = [f exactly:@"Bob" case:CaseSensitive onMatch:^NSObject *(NSString *m) {
         return @"B";
     }];
-    ZKParser eve = [f exactly:@"Eve" case:CaseSensitive onMatch:^NSObject *(NSString *m) {
+    ZKParser* eve = [f exactly:@"Eve" case:CaseSensitive onMatch:^NSObject *(NSString *m) {
         return @"E";
     }];
-    ZKParser bobby = [f exactly:@"Bobby" case:CaseSensitive onMatch:^NSObject *(NSString *m) {
+    ZKParser* bobby = [f exactly:@"Bobby" case:CaseSensitive onMatch:^NSObject *(NSString *m) {
         return @"BB";
     }];
-    ZKParser p = [f seq:@[bob,eve,bobby]];
+    ZKParser* p = [f seq:@[bob,eve,bobby]];
     NSObject *exp = @[@"B",@"E",@"BB"];
     NSError *err = nil;
     XCTAssertEqualObjects(exp, [@"BobEveBobby" parse:p error:&err]);
@@ -110,56 +110,56 @@ ZKParserFactory *f = nil;
 }
 
 -(void)testWhitespace {
-    ZKParser ws = [f whitespace];
+    ZKParser* ws = [f whitespace];
     ZKParserInput *i = [ZKParserInput withInput:@" Hello"];
     NSError *err = nil;
-    ws(i, &err);
+    [ws parse:i error:&err];
     XCTAssertEqualObjects(@"Hello", i.value);
     XCTAssertNil(err);
 
     i = [ZKParserInput withInput:@" \t Hello"];
-    ws(i, &err);
+    [ws parse:i error:&err];
     XCTAssertEqualObjects(@"Hello", i.value);
     XCTAssertNil(err);
 
     i = [ZKParserInput withInput:@"Hello"];
-    ws(i, &err);
+    [ws parse:i error:&err];
     XCTAssertEqual(5, i.length);
     XCTAssertEqualObjects(@"expecting whitespace at position 1", err.localizedDescription);
 }
 
 -(void)testCharacterSet {
-    ZKParser p = [f characters:[NSCharacterSet characterSetWithCharactersInString:@"ABC"] name:@"Id" min:3];
+    ZKParser* p = [f characters:[NSCharacterSet characterSetWithCharactersInString:@"ABC"] name:@"Id" min:3];
     NSError *err = nil;
     ZKParserInput *i = [ZKParserInput withInput:@"AAAABC"];
-    NSObject *res = p(i,&err);
+    NSObject *res = [p parse:i error:&err];
     XCTAssertEqualObjects(@"AAAABC", res);
 
     i = [ZKParserInput withInput:@"AAA"];
-    res = p(i,&err);
+    res = [p parse:i error:&err];
     XCTAssertEqualObjects(@"AAA", res);
 
     i = [ZKParserInput withInput:@"AA"];
-    res = p(i,&err);
+    res = [p parse:i error:&err];
     XCTAssertNil(res);
     XCTAssertEqualObjects(@"expecting Id at position 1", err.localizedDescription);
     XCTAssertEqual(2, i.length);
 }
 
 -(void)testOneOrMore {
-    ZKParser bob = [f exactly:@"Bob" case:CaseSensitive onMatch:^NSObject *(NSString *m) {
+    ZKParser* bob = [f exactly:@"Bob" case:CaseSensitive onMatch:^NSObject *(NSString *m) {
         return @"B";
     }];
-    ZKParser bobs = [f oneOrMore:bob];
+    ZKParser* bobs = [f oneOrMore:bob];
     NSObject *exp = @[@"B",@"B",@"B"];
     NSError *err = nil;
-    XCTAssertEqualObjects(exp, bobs([ZKParserInput withInput:@"BobBobBob"], &err));
+    XCTAssertEqualObjects(exp, [bobs parse:[ZKParserInput withInput:@"BobBobBob"] error:&err]);
     XCTAssertNil(err);
 }
 
 -(void)testZeroOrMore {
-    ZKParser bob = [f exactly:@"Bob"];
-    ZKParser maybeBobs = [f zeroOrMore:bob];
+    ZKParser* bob = [f exactly:@"Bob"];
+    ZKParser* maybeBobs = [f zeroOrMore:bob];
     NSError *err = nil;
     NSObject *r = [@"Bob" parse:maybeBobs error:&err];
     XCTAssertEqualObjects(@[@"Bob"], r);
@@ -173,8 +173,8 @@ ZKParserFactory *f = nil;
     XCTAssertEqualObjects((@[@"Bob",@"Bob"]), r);
     XCTAssertNil(err);
     
-    ZKParser alice = [f exactly:@"Alice"];
-    ZKParser aliceAndMaybeBobs = [f seq:@[alice, [f whitespace], maybeBobs]];
+    ZKParser* alice = [f exactly:@"Alice"];
+    ZKParser* aliceAndMaybeBobs = [f seq:@[alice, [f whitespace], maybeBobs]];
     r = [@"Alice" parse:aliceAndMaybeBobs error:&err];
     XCTAssertNil(r);
     XCTAssertEqualObjects(@"expecting whitespace at position 6", err.localizedDescription);
@@ -194,34 +194,34 @@ ZKParserFactory *f = nil;
 
 -(void)testSoql {
     f.defaultCaseSensitivity = CaseInsensitive;
-    ZKParser ws = [f whitespace];
-    ZKParser maybeWs = [f maybeWhitespace];
-    ZKParser select = [f exactly:@"SELECT"];
-    ZKParser from = [f exactly:@"FROM"];
-    ZKParser ident = [f characters:[NSCharacterSet characterSetWithCharactersInString:@"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"] name:@"identifier" min:1];
-    ZKParser pathStep = [f seq:@[[f exactly:@"."], ident] onMatch:^NSObject *(NSArray *m) {
+    ZKParser* ws = [f whitespace];
+    ZKParser* maybeWs = [f maybeWhitespace];
+    ZKParser* select = [f exactly:@"SELECT"];
+    ZKParser* from = [f exactly:@"FROM"];
+    ZKParser* ident = [f characters:[NSCharacterSet characterSetWithCharactersInString:@"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"] name:@"identifier" min:1];
+    ZKParser* pathStep = [f seq:@[[f exactly:@"."], ident] onMatch:^NSObject *(NSArray *m) {
         return [NSString stringWithFormat:@".%@", m[1]];
     }];
-    ZKParser field = [f seq:@[ident, [f zeroOrMore:pathStep]] onMatch:^NSObject *(NSArray *m) {
+    ZKParser* field = [f seq:@[ident, [f zeroOrMore:pathStep]] onMatch:^NSObject *(NSArray *m) {
         if ([m[1] count] == 0) {
             return m[0];
         }
         return [NSString stringWithFormat:@"%@%@", m[0], [m[1] componentsJoinedByString:@""]];
     }];
-    ZKParser func = [f seq:@[ident, maybeWs, [f exactly:@"("],maybeWs, field,maybeWs,[f exactly:@")"]] onMatch:^NSObject *(NSArray *m) {
+    ZKParser* func = [f seq:@[ident, maybeWs, [f exactly:@"("],maybeWs, field,maybeWs,[f exactly:@")"]] onMatch:^NSObject *(NSArray *m) {
         return @[m[0], m[2]];
     }];
-    ZKParser selectExpr = [f oneOf:@[field, func]];
-    ZKParser nextExpr = [f seq:@[maybeWs, [f exactly:@","], maybeWs, selectExpr] onMatch:^NSObject *(NSArray *m) {
+    ZKParser* selectExpr = [field or:@[func]];
+    ZKParser* nextExpr = [f seq:@[maybeWs, [f exactly:@","], maybeWs, selectExpr] onMatch:^NSObject *(NSArray *m) {
         return m[1];
     }];
-    ZKParser fieldList = [f seq:@[selectExpr, [f zeroOrMore:nextExpr]] onMatch:^NSObject *(NSArray *m) {
+    ZKParser* fieldList = [f seq:@[selectExpr, [f zeroOrMore:nextExpr]] onMatch:^NSObject *(NSArray *m) {
         NSArray *f = @[m[0]];
         return [f arrayByAddingObjectsFromArray:m[1]];
     }];
     fieldList = [f oneOf:@[fieldList, [f exactly:@"count()"]]];
 
-    ZKParser selectStmt = [f seq:@[select, ws, fieldList, ws, from, ws, ident]];
+    ZKParser* selectStmt = [f seq:@[select, ws, fieldList, ws, from, ws, ident]];
     NSError *err = nil;
     NSObject *r = [@"SELECT contact, account.name from contacts" parse:selectStmt error:&err];
     XCTAssertEqualObjects(r, (@[@"SELECT", @[@"contact",@"account.name"], @"from", @"contacts"]));
