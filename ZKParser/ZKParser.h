@@ -31,16 +31,20 @@ typedef enum ZKCaseSensitivity {
 typedef NSObject *(^ZKParser)(ZKParserInput*, NSError **);
 
 @interface ZKParserFactory : NSObject
-+(ZKParser)whitespace;
-+(ZKParser)exactly:(NSString *)s;
-+(ZKParser)exactly:(NSString *)s case:(ZKCaseSensitivity)c;
-+(ZKParser)exactly:(NSString *)s case:(ZKCaseSensitivity)c onMatch:(NSObject *(^)(NSString *))block;
-+(ZKParser)characters:(NSCharacterSet*)set name:(NSString *)name min:(NSUInteger)minMatches;
+-(ZKParser)whitespace;
+-(ZKParser)maybeWhitespace;
+-(ZKParser)exactly:(NSString *)s;
+-(ZKParser)exactly:(NSString *)s case:(ZKCaseSensitivity)c;
+-(ZKParser)exactly:(NSString *)s case:(ZKCaseSensitivity)c onMatch:(NSObject *(^)(NSString *))block;
+-(ZKParser)characters:(NSCharacterSet*)set name:(NSString *)name min:(NSUInteger)minMatches;
 
-+(ZKParser)seq:(NSArray<ZKParser>*)items;
-+(ZKParser)oneOf:(NSArray<ZKParser>*)items;  // NSFastEnumeration ? // onMatch version
-+(ZKParser)oneOrMore:(ZKParser)p;
-+(ZKParser)zeroOrMore:(ZKParser)p;
+-(ZKParser)seq:(NSArray<ZKParser>*)items;
+-(ZKParser)seq:(NSArray<ZKParser>*)items onMatch:(NSObject *(^)(NSArray *))block;
+-(ZKParser)oneOf:(NSArray<ZKParser>*)items;  // NSFastEnumeration ? // onMatch version
+-(ZKParser)oneOrMore:(ZKParser)p;
+-(ZKParser)zeroOrMore:(ZKParser)p;
+
+-(ZKParser)map:(ZKParser)p onMatch:(NSObject *(^)(NSObject *))block;
 
 +(NSObject *)parse:(ZKParser)parser input:(NSString *)input error:(NSError **)err;
 
