@@ -193,10 +193,11 @@ ZKParserFactory *f = nil;
 }
 
 -(void)testSoql {
+    f.defaultCaseSensitivity = CaseInsensitive;
     ZKParser ws = [f whitespace];
     ZKParser maybeWs = [f maybeWhitespace];
-    ZKParser select = [f exactly:@"SELECT" case:CaseInsensitive];
-    ZKParser from = [f exactly:@"FROM" case:CaseInsensitive];
+    ZKParser select = [f exactly:@"SELECT"];
+    ZKParser from = [f exactly:@"FROM"];
     ZKParser ident = [f characters:[NSCharacterSet characterSetWithCharactersInString:@"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"] name:@"identifier" min:1];
     ZKParser pathStep = [f seq:@[[f exactly:@"."], ident] onMatch:^NSObject *(NSArray *m) {
         return [NSString stringWithFormat:@".%@", m[1]];
@@ -207,15 +208,19 @@ ZKParserFactory *f = nil;
         }
         return [NSString stringWithFormat:@"%@%@", m[0], [m[1] componentsJoinedByString:@""]];
     }];
-    ZKParser fieldList = [f seq:@[field, [f zeroOrMore:[f seq:@[maybeWs, [f exactly:@","], maybeWs, field] onMatch:^NSObject *(NSArray *m) {
-        return m[1];
-    }]]]];
-    fieldList = [f map:fieldList onMatch:^NSObject *(NSObject *m) {
-        NSArray *r = (NSArray*)m;
-        NSArray *f = @[r[0]];
-        return [f arrayByAddingObjectsFromArray:r[1]];
+    ZKParser func = [f seq:@[ident, maybeWs, [f exactly:@"("],maybeWs, field,maybeWs,[f exactly:@")"]] onMatch:^NSObject *(NSArray *m) {
+        return @[m[0], m[2]];
     }];
-    
+    ZKParser selectExpr = [f oneOf:@[field, func]];
+    ZKParser nextExpr = [f seq:@[maybeWs, [f exactly:@","], maybeWs, selectExpr] onMatch:^NSObject *(NSArray *m) {
+        return m[1];
+    }];
+    ZKParser fieldList = [f seq:@[selectExpr, [f zeroOrMore:nextExpr]] onMatch:^NSObject *(NSArray *m) {
+        NSArray *f = @[m[0]];
+        return [f arrayByAddingObjectsFromArray:m[1]];
+    }];
+    fieldList = [f oneOf:@[fieldList, [f exactly:@"count()"]]];
+
     ZKParser selectStmt = [f seq:@[select, ws, fieldList, ws, from, ws, ident]];
     NSError *err = nil;
     NSObject *r = [@"SELECT contact, account.name from contacts" parse:selectStmt error:&err];
@@ -224,6 +229,15 @@ ZKParserFactory *f = nil;
     XCTAssertEqualObjects(r, (@[@"SELECT", @[@"contact",@"account.name"], @"from", @"contacts"]));
     r = [@"SELECTcontact,account.name from contacts" parse:selectStmt error:&err];
     XCTAssertEqualObjects(@"expecting whitespace at position 7", err.localizedDescription);
+
+    r = [@"SELECT count() from contacts" parse:selectStmt error:&err];
+    XCTAssertEqualObjects(r, (@[@"SELECT", @"count()", @"from", @"contacts"]));
+
+    r = [@"SELECT max(createdDate) from contacts" parse:selectStmt error:&err];
+    XCTAssertEqualObjects(r, (@[@"SELECT", @[@[@"max",@"createdDate"]], @"from", @"contacts"]));
+
+    r = [@"SELECT name, max(createdDate) from contacts" parse:selectStmt error:&err];
+    XCTAssertEqualObjects(r, (@[@"SELECT", @[@"name",@[@"max",@"createdDate"]], @"from", @"contacts"]));
 }
 
 - (void)testPerformanceExample {
