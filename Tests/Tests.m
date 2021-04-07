@@ -214,7 +214,7 @@ arrayBlock pick(NSUInteger idx) {
     f.defaultCaseSensitivity = CaseInsensitive;
     ZKParser* ws = [f whitespace];
     ZKParser* maybeWs = [f maybeWhitespace];
-    ZKParser* commaSep = [f seq:@[maybeWs,[f skip:@","],maybeWs]];
+    ZKParser* commaSep = [f seq:@[maybeWs, [f skip:@","], maybeWs]];
     ZKParser* ident = [f characters:[NSCharacterSet characterSetWithCharactersInString:@"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_"]
                                name:@"identifier"
                                 min:1];
@@ -226,12 +226,7 @@ arrayBlock pick(NSUInteger idx) {
     ZKParser* selectExprs = [f oneOrMore:selectExpr separator:commaSep];
     selectExprs = [selectExprs or:@[[f eq:@"count()"]]];
 
-    ZKParser *objectRef = [f seq:@[ident, [f zeroOrOne:[f seq:@[ws, ident]]]] onMatch:^NSObject *(NSArray *m) {
-        if (m.count == 1) {
-            return @[m[0], @""];
-        }
-        return @[m[0], m[1][0]];
-    }];
+    ZKParser *objectRef = [f oneOrMore:ident separator:ws max:2];
     ZKParser *objectRefs = [f oneOrMore:objectRef separator:commaSep];
     
     ZKParser *filterScope = [f zeroOrOne:[[ws then:@[[f eq:@"USING"], ws, [f eq:@"SCOPE"], ws, ident]] onMatch:pick(2)]];
@@ -240,26 +235,26 @@ arrayBlock pick(NSUInteger idx) {
 
     NSError *err = nil;
     NSObject *r = [@"SELECT contact, account.name from contacts" parse:selectStmt error:&err];
-    XCTAssertEqualObjects(r, (@[@"SELECT", @[@[@"contact"],@[@"account",@"name"]], @"from", @[@[@"contacts",@""]]]));
+    XCTAssertEqualObjects(r, (@[@"SELECT", @[@[@"contact"],@[@"account",@"name"]], @"from", @[@[@"contacts"]]]));
     XCTAssertNil(err);
 
     r = [@"SELECT contact,account.name from contacts" parse:selectStmt error:&err];
-    XCTAssertEqualObjects(r, (@[@"SELECT", @[@[@"contact"],@[@"account",@"name"]], @"from", @[@[@"contacts",@""]]]));
+    XCTAssertEqualObjects(r, (@[@"SELECT", @[@[@"contact"],@[@"account",@"name"]], @"from", @[@[@"contacts"]]]));
     XCTAssertNil(err);
 
     r = [@"SELECTcontact,account.name from contacts" parse:selectStmt error:&err];
     XCTAssertEqualObjects(@"expecting whitespace at position 7", err.localizedDescription);
 
     r = [@"SELECT count() from contacts" parse:selectStmt error:&err];
-    XCTAssertEqualObjects(r, (@[@"SELECT", @"count()", @"from", @[@[@"contacts",@""]]]));
+    XCTAssertEqualObjects(r, (@[@"SELECT", @"count()", @"from", @[@[@"contacts"]]]));
     XCTAssertNil(err);
 
     r = [@"SELECT max(createdDate) from contacts" parse:selectStmt error:&err];
-    XCTAssertEqualObjects(r, (@[@"SELECT", @[@[@"max",@[@"createdDate"]]], @"from", @[@[@"contacts",@""]]]));
+    XCTAssertEqualObjects(r, (@[@"SELECT", @[@[@"max",@[@"createdDate"]]], @"from", @[@[@"contacts"]]]));
     XCTAssertNil(err);
 
     r = [@"SELECT name, max(createdDate) from contacts" parse:selectStmt error:&err];
-    XCTAssertEqualObjects(r, (@[@"SELECT", @[@[@"name"],@[@"max",@[@"createdDate"]]], @"from", @[@[@"contacts",@""]]]));
+    XCTAssertEqualObjects(r, (@[@"SELECT", @[@[@"name"],@[@"max",@[@"createdDate"]]], @"from", @[@[@"contacts"]]]));
     XCTAssertNil(err);
 
     r = [@"SELECT c.name from contacts c" parse:selectStmt error:&err];
