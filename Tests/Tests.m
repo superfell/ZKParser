@@ -56,6 +56,23 @@ ZKParserFactory *f = nil;
     XCTAssertNil(err);
 }
 
+-(void)testDefaultCaseSensitivity {
+    ZKParser p = [f exactly:@"bob"];
+    NSError *err = nil;
+    XCTAssertEqualObjects(@"bob", [@"bob" parse:p error:&err]);
+    XCTAssertNil([@"boB" parse:p error:&err]);
+    XCTAssertEqualObjects(@"expecting 'bob' at position 1", err.localizedDescription);
+    f.defaultCaseSensitivity = CaseInsensitive;
+    ZKParser i = [f exactly:@"bob"];
+    XCTAssertEqualObjects(@"bob", [@"bob" parse:i error:&err]);
+    XCTAssertEqualObjects(@"Bob", [@"Bob" parse:i error:&err]);
+    XCTAssertEqualObjects(@"BOB", [@"BOB" parse:i error:&err]);
+    // p shouldn't be affected by change
+    XCTAssertEqualObjects(@"bob", [@"bob" parse:p error:&err]);
+    XCTAssertNil([@"boB" parse:p error:&err]);
+    XCTAssertEqualObjects(@"expecting 'bob' at position 1", err.localizedDescription);
+}
+
 -(void)testOneOf {
     ZKParser bob = [f exactly:@"Bob" case:CaseSensitive onMatch:^NSObject *(NSString *m) {
         return @"B";

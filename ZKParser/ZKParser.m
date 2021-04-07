@@ -108,7 +108,7 @@
 }
 
 -(ZKParser)exactly:(NSString *)s {
-    return [self exactly:s case:CaseSensitive];
+    return [self exactly:s case:self.defaultCaseSensitivity];
 }
 
 -(ZKParser)whitespace {
