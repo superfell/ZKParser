@@ -9,11 +9,24 @@
 #import <Foundation/Foundation.h>
 #import "ZKParserInput.h"
 
+@class ZKParserSeq;
+@class ZKParserOneOf;
+
 @interface ZKParser : NSObject
 -(NSObject *)parse:(ZKParserInput*)input error:(NSError **)err;
 
--(ZKParser*)or:(NSArray<ZKParser*>*)otherParser;
--(ZKParser*)and:(NSArray<ZKParser*>*)otherParsers;
+-(ZKParserOneOf*)or:(NSArray<ZKParser*>*)otherParsers;
+-(ZKParserSeq*)then:(NSArray<ZKParser*>*)otherParsers;
+-(ZKParserSeq*)thenZeroOrMore:(ZKParser*)parser;
+-(ZKParserSeq*)thenOneOrMore:(ZKParser*)parser;
+@end
+
+@interface ZKParserOneOf : ZKParser
+-(ZKParserSeq*)onMatch:(NSObject *(^)(NSObject *))block;
+@end
+
+@interface ZKParserSeq : ZKParser
+-(ZKParserSeq*)onMatch:(NSObject *(^)(NSArray *))block;
 @end
 
 @interface ZKParserFactory : NSObject
@@ -22,19 +35,25 @@
 
 -(ZKParser*)whitespace;
 -(ZKParser*)maybeWhitespace;
+-(ZKParser*)eq:(NSString *)s;         // same as exactly. case sensitive set by defaultCaseSensitivity
 -(ZKParser*)exactly:(NSString *)s;    // case sensitive set by defaultCaseSensitivity
 -(ZKParser*)exactly:(NSString *)s case:(ZKCaseSensitivity)c;
 -(ZKParser*)exactly:(NSString *)s case:(ZKCaseSensitivity)c onMatch:(NSObject *(^)(NSString *))block;
 -(ZKParser*)characters:(NSCharacterSet*)set name:(NSString *)name min:(NSUInteger)minMatches;
+-(ZKParser*)skip:(NSString *)s;       // same as exactly, but doesn't return a value.
 
--(ZKParser*)seq:(NSArray<ZKParser*>*)items;
--(ZKParser*)seq:(NSArray<ZKParser*>*)items onMatch:(NSObject *(^)(NSArray *))block;
+-(ZKParserSeq*)seq:(NSArray<ZKParser*>*)items;
+-(ZKParserSeq*)seq:(NSArray<ZKParser*>*)items onMatch:(NSObject *(^)(NSArray *))block;
 
--(ZKParser*)oneOf:(NSArray<ZKParser*>*)items;  // NSFastEnumeration ? // onMatch version
--(ZKParser*)oneOf:(NSArray<ZKParser*>*)items onMatch:(NSObject *(^)(NSObject *))block;
+-(ZKParserOneOf*)oneOf:(NSArray<ZKParser*>*)items;  // NSFastEnumeration ? // onMatch version
+-(ZKParserOneOf*)oneOf:(NSArray<ZKParser*>*)items onMatch:(NSObject *(^)(NSObject *))block;
 
 -(ZKParser*)oneOrMore:(ZKParser*)p;
 -(ZKParser*)zeroOrMore:(ZKParser*)p;
+-(ZKParser*)oneOrMore:(ZKParser*)p separator:(ZKParser*)sep;
+-(ZKParser*)zeroOrMore:(ZKParser*)p separator:(ZKParser*)sep;
+
+-(ZKParser*)zeroOrOne:(ZKParser*)p;
 
 -(ZKParser*)map:(ZKParser*)p onMatch:(NSObject *(^)(NSObject *))block;
 

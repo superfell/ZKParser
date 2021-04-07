@@ -11,6 +11,15 @@
 
 typedef NSObject *(^mapperBlock)(NSObject *);
 
+@interface ZKParserOneOf()
+@property (strong,nonatomic) NSObject*(^matchBlock)(NSObject*);
+@property (strong,nonatomic) NSArray<ZKParser*>* items;
+@end
+@interface ZKParserSeq()
+@property (strong,nonatomic) NSObject*(^matchBlock)(NSArray*);
+@property (strong,nonatomic) NSArray<ZKParser*>* items;
+@end
+
 @interface ZKParserMapper : ZKParser
 @property (strong, nonatomic) ZKParser *inner;
 @property (strong, nonatomic) mapperBlock block;
@@ -19,26 +28,30 @@ typedef NSObject *(^mapperBlock)(NSObject *);
 @property (strong,nonatomic) NSString *match;
 @property (assign,nonatomic) ZKCaseSensitivity caseSensitivity;
 @property (strong,nonatomic) NSObject*(^onMatch)(NSString*);
+@property (assign,nonatomic) BOOL returnValue;
 @end
+
 @interface ZKParserRepeat : ZKParser
++(instancetype)zeroOrMore:(ZKParser*)p;
++(instancetype)oneOrMore:(ZKParser*)p;
+
 @property (strong,nonatomic) ZKParser *parser;
+@property (strong,nonatomic) ZKParser *separator;
 @property (assign,nonatomic) NSUInteger min;
 @property (strong,nonatomic) NSObject*(^onMatch)(NSArray*);
 @end
+
 @interface ZKParserCharSet : ZKParser
 @property (strong,nonatomic) NSCharacterSet* charSet;
 @property (assign,nonatomic) NSUInteger minMatches;
 @property (strong,nonatomic) NSString *errorName;
 @property (assign,nonatomic) BOOL returnValue;
 @end
-@interface ZKParserOneOf : ZKParser
-@property (strong,nonatomic) NSArray<ZKParser*>* items;
-@property (strong,nonatomic) NSObject*(^onMatch)(NSObject*);
+
+@interface ZKParserOptional : ZKParser
+@property (strong,nonatomic) ZKParser *optional;
 @end
-@interface ZKParserSeq : ZKParser
-@property (strong,nonatomic) NSArray<ZKParser*>* items;
-@property (strong,nonatomic) NSObject*(^onMatch)(NSArray*);
-@end
+
 
 @implementation ZKParser
 -(NSObject *)parse:(ZKParserInput*)input error:(NSError **)err {
@@ -50,16 +63,24 @@ typedef NSObject *(^mapperBlock)(NSObject *);
     return nil;
 }
 
--(ZKParser*)or:(NSArray<ZKParser*>*)otherParsers {
+-(ZKParserOneOf*)or:(NSArray<ZKParser*>*)otherParsers {
     ZKParserOneOf *o = [ZKParserOneOf new];
     o.items = [@[self] arrayByAddingObjectsFromArray:otherParsers];
     return o;
 }
 
--(ZKParser*)and:(NSArray<ZKParser*>*)otherParsers {
+-(ZKParserSeq*)then:(NSArray<ZKParser*>*)otherParsers {
     ZKParserSeq *s = [ZKParserSeq new];
     s.items = [@[self] arrayByAddingObjectsFromArray:otherParsers];
     return s;
+}
+
+-(ZKParserSeq*)thenZeroOrMore:(ZKParser*)parser {
+    return [self then:@[[ZKParserRepeat zeroOrMore:parser]]];
+}
+
+-(ZKParserSeq*)thenOneOrMore:(ZKParser*)parser {
+    return [self then:@[[ZKParserRepeat oneOrMore:parser]]];
 }
 
 @end
@@ -78,6 +99,9 @@ typedef NSObject *(^mapperBlock)(NSObject *);
 -(NSObject *)parse:(ZKParserInput*)input error:(NSError **)err {
     NSString *res = [input consumeString:self.match caseSensitive:self.caseSensitivity];
     if (res != nil) {
+        if (!self.returnValue) {
+            return nil;
+        }
         return self.onMatch == nil ? res : self.onMatch(res);
     }
     *err = [NSError errorWithDomain:@"Parser"
@@ -88,6 +112,11 @@ typedef NSObject *(^mapperBlock)(NSObject *);
                            }];
     return nil;
 }
+
+-(NSString*)description {
+    return self.match;
+}
+
 @end
 
 @implementation ZKParserCharSet
@@ -111,13 +140,18 @@ typedef NSObject *(^mapperBlock)(NSObject *);
         count++;
     }
 }
+-(NSString *)description {
+    return [NSString stringWithFormat:@"{%@ x %lu}", self.errorName, self.minMatches];
+}
+
 @end
 
 @implementation ZKParserOneOf
+
 -(NSObject *)parse:(ZKParserInput*)input error:(NSError **)err {
     NSObject *res = [self parseInput:input error:err];
-    if (*err == nil && self.onMatch != nil) {
-        return self.onMatch(res);
+    if (*err == nil && self.matchBlock != nil) {
+        return self.matchBlock(res);
     }
     return res;
 }
@@ -145,6 +179,20 @@ typedef NSObject *(^mapperBlock)(NSObject *);
     }
     return longestRes;
 }
+
+-(ZKParserOneOf*)or:(NSArray<ZKParser*>*)otherParsers {
+    if (self.matchBlock == nil) {
+        self.items = [self.items arrayByAddingObjectsFromArray:otherParsers];
+        return self;
+    }
+    return [super or:otherParsers];
+}
+
+-(ZKParserOneOf*)onMatch:(NSObject *(^)(NSObject *))block {
+    self.matchBlock = block;
+    return self;
+}
+
 @end
 
 @implementation ZKParserSeq
@@ -161,36 +209,108 @@ typedef NSObject *(^mapperBlock)(NSObject *);
             [out addObject:res];
         }
     }
-    if (self.onMatch != nil) {
-        return self.onMatch(out);
+    if (self.matchBlock != nil) {
+        return self.matchBlock(out);
     }
     return out;
+}
+
+-(ZKParserSeq*)onMatch:(NSObject *(^)(NSArray *))block {
+    self.matchBlock = block;
+    return self;
+}
+
+-(ZKParserSeq*)then:(NSArray<ZKParser*>*)otherParsers {
+    if (self.matchBlock == nil) {
+        self.items = [self.items arrayByAddingObjectsFromArray:otherParsers];
+        return self;
+    }
+    return [super then:otherParsers];
+}
+
+-(NSString*)description {
+    return [self.items description];
 }
 @end
 
 @implementation ZKParserRepeat
+
++(instancetype)zeroOrMore:(ZKParser*)p {
+    ZKParserRepeat *r = [ZKParserRepeat new];
+    r.parser = p;
+    r.min = 0;
+    r.onMatch = ^NSObject *(NSArray *r) {
+        return r;
+    };
+    return r;
+}
+
++(instancetype)oneOrMore:(ZKParser*)p {
+    ZKParserRepeat *r = [ZKParserRepeat new];
+    r.parser = p;
+    r.min = 1;
+    r.onMatch = ^NSObject *(NSArray *r) {
+        return r;
+    };
+    return r;
+}
+
 -(NSObject *)parse:(ZKParserInput*)input error:(NSError **)err {
     NSUInteger start = input.pos;
     NSMutableArray *out = [NSMutableArray array];
     NSError *nextError = nil;
-    while (true) {
-        NSObject *next = [self.parser parse:input error:&nextError];
-        if (nextError != nil) {
-            if (out.count >= self.min) {
-                if (self.onMatch != nil) {
-                    return self.onMatch(out);
+    NSObject *first = [self.parser parse:input error:&nextError];
+    if (first != nil) {
+        [out addObject:first];
+    }
+    if (nextError == nil) {
+        while (true) {
+            NSUInteger thisStart = input.pos;
+            if (self.separator != nil) {
+                [self.separator parse:input error:&nextError];
+                if (nextError != nil) {
+                    break;
                 }
-                return out;
-            } else {
-                *err = nextError;
-                [input rewindTo:start];
-                return nil;
+            }
+            NSObject *next = [self.parser parse:input error:&nextError];
+            if (nextError != nil) {
+                // unconsume the separator above
+                [input rewindTo:thisStart];
+                break;
+            }
+            if (next != nil) {
+                [out addObject:next];
             }
         }
-        if (next != nil) {
-            [out addObject:next];
-        }
     }
+    if (out.count >= self.min) {
+        return self.onMatch(out);
+    }
+    *err = nextError;
+    [input rewindTo:start];
+    return nil;
+}
+
+-(NSString *)description {
+    return [NSString stringWithFormat:@"{%lu}x%@", self.min, self.parser];
+}
+@end
+
+@implementation ZKParserOptional
+
+-(NSObject *)parse:(ZKParserInput*)input error:(NSError **)err {
+    NSUInteger start = input.pos;
+    NSObject *res = [self.optional parse:input error:err];
+    if (*err == nil) {
+        return res;
+    }
+    *err = nil;
+    [input rewindTo:start];
+    return nil;
+}
+
+-(NSString *)description {
+    return [NSString stringWithFormat:@"{%@}?" , self.optional];
 }
 @end
 
@@ -208,6 +328,7 @@ typedef NSObject *(^mapperBlock)(NSObject *);
     e.match = s;
     e.caseSensitivity = c;
     e.onMatch = block;
+    e.returnValue = YES;
     return e;
 }
 
@@ -217,6 +338,18 @@ typedef NSObject *(^mapperBlock)(NSObject *);
 
 -(ZKParser*)exactly:(NSString *)s {
     return [self exactly:s case:self.defaultCaseSensitivity];
+}
+
+-(ZKParser*)eq:(NSString *)s {
+    return [self exactly:s case:self.defaultCaseSensitivity];
+}
+
+-(ZKParser*)skip:(NSString *)s {
+    ZKParserExact *e = [ZKParserExact new];
+    e.match = s;
+    e.caseSensitivity = self.defaultCaseSensitivity;
+    e.returnValue = NO;
+    return e;
 }
 
 -(ZKParser*)whitespace {
@@ -255,7 +388,7 @@ typedef NSObject *(^mapperBlock)(NSObject *);
 -(ZKParser*)oneOf:(NSArray<ZKParser*>*)items onMatch:(mapperBlock)block {  // NSFastEnumeration ?
     ZKParserOneOf *o = [ZKParserOneOf new];
     o.items = items;
-    o.onMatch = block;
+    o.matchBlock = block;
     return o;
 }
 
@@ -268,23 +401,33 @@ typedef NSObject *(^mapperBlock)(NSObject *);
 -(ZKParser*)seq:(NSArray<ZKParser*>*)items onMatch:(NSObject *(^)(NSArray *))block {
     ZKParserSeq *s = [ZKParserSeq new];
     s.items = items;
-    s.onMatch = block;
+    s.matchBlock = block;
     return s;
 }
 
--(ZKParser*)repeating:(ZKParser*)p minCount:(NSUInteger)min {
-    ZKParserRepeat *r = [ZKParserRepeat new];
-    r.parser = p;
-    r.min = min;
-    return r;
-}
-
 -(ZKParser*)oneOrMore:(ZKParser*)p {
-    return [self repeating:p minCount:1];
+    return [ZKParserRepeat oneOrMore:p];
 }
 
 -(ZKParser*)zeroOrMore:(ZKParser*)p {
-    return [self repeating:p minCount:0];
+    return [ZKParserRepeat zeroOrMore:p];
 }
 
+-(ZKParser*)oneOrMore:(ZKParser*)p separator:(ZKParser*)sep {
+    ZKParserRepeat *r = [ZKParserRepeat oneOrMore:p];
+    r.separator = sep;
+    return r;
+}
+
+-(ZKParser*)zeroOrMore:(ZKParser*)p separator:(ZKParser*)sep {
+    ZKParserRepeat *r = [ZKParserRepeat zeroOrMore:p];
+    r.separator = sep;
+    return r;
+}
+
+-(ZKParser*)zeroOrOne:(ZKParser*)p {
+    ZKParserOptional *o = [ZKParserOptional new];
+    o.optional = p;
+    return o;
+}
 @end

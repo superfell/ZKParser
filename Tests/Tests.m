@@ -155,6 +155,16 @@ ZKParserFactory *f = nil;
     NSError *err = nil;
     XCTAssertEqualObjects(exp, [bobs parse:[ZKParserInput withInput:@"BobBobBob"] error:&err]);
     XCTAssertNil(err);
+    
+    bobs = [f oneOrMore:bob separator:[f eq:@","]];
+    XCTAssertEqualObjects(@[@"B"], [@"Bob" parse:bobs error:&err]);
+    XCTAssertNil(err);
+    XCTAssertEqualObjects((@[@"B",@"B"]), [@"Bob,Bob" parse:bobs error:&err]);
+    XCTAssertNil(err);
+    XCTAssertNil([@"Bob,Bob," parse:bobs error:&err]);
+    XCTAssertEqualObjects(@"Unexpected input ',' at position 8", err.localizedDescription);
+    XCTAssertEqualObjects((@[@"B",@"B",@"B"]), [@"Bob,Bob,Bob" parse:bobs error:&err]);
+    XCTAssertNil(err);
 }
 
 -(void)testZeroOrMore {
@@ -192,64 +202,89 @@ ZKParserFactory *f = nil;
     XCTAssertNil(err);
 }
 
+typedef NSObject*(^arrayBlock)(NSArray*);
+
+arrayBlock pick(NSUInteger idx) {
+    return ^NSObject *(NSArray *m) {
+        return m[idx];
+    };
+}
+
 -(void)testSoql {
     f.defaultCaseSensitivity = CaseInsensitive;
     ZKParser* ws = [f whitespace];
     ZKParser* maybeWs = [f maybeWhitespace];
-    ZKParser* select = [f exactly:@"SELECT"];
-    ZKParser* from = [f exactly:@"FROM"];
-    ZKParser* ident = [f characters:[NSCharacterSet characterSetWithCharactersInString:@"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"] name:@"identifier" min:1];
-    ZKParser* pathStep = [f seq:@[[f exactly:@"."], ident] onMatch:^NSObject *(NSArray *m) {
-        return [NSString stringWithFormat:@".%@", m[1]];
-    }];
-    ZKParser* field = [f seq:@[ident, [f zeroOrMore:pathStep]] onMatch:^NSObject *(NSArray *m) {
-        if ([m[1] count] == 0) {
-            return m[0];
-        }
-        return [NSString stringWithFormat:@"%@%@", m[0], [m[1] componentsJoinedByString:@""]];
-    }];
-    ZKParser* func = [f seq:@[ident, maybeWs, [f exactly:@"("],maybeWs, field,maybeWs,[f exactly:@")"]] onMatch:^NSObject *(NSArray *m) {
-        return @[m[0], m[2]];
-    }];
+    ZKParser* commaSep = [f seq:@[maybeWs,[f skip:@","],maybeWs]];
+    ZKParser* ident = [f characters:[NSCharacterSet characterSetWithCharactersInString:@"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_"]
+                               name:@"identifier"
+                                min:1];
+    
+    ZKParser* field = [f oneOrMore:ident separator:[f eq:@"."]];
+    ZKParser* func = [f seq:@[ident, maybeWs, [f skip:@"("], maybeWs, field, maybeWs, [f skip:@")"]]];
+    
     ZKParser* selectExpr = [field or:@[func]];
-    ZKParser* nextExpr = [f seq:@[maybeWs, [f exactly:@","], maybeWs, selectExpr] onMatch:^NSObject *(NSArray *m) {
-        return m[1];
-    }];
-    ZKParser* fieldList = [f seq:@[selectExpr, [f zeroOrMore:nextExpr]] onMatch:^NSObject *(NSArray *m) {
-        NSArray *f = @[m[0]];
-        return [f arrayByAddingObjectsFromArray:m[1]];
-    }];
-    fieldList = [f oneOf:@[fieldList, [f exactly:@"count()"]]];
+    ZKParser* selectExprs = [f oneOrMore:selectExpr separator:commaSep];
+    selectExprs = [selectExprs or:@[[f eq:@"count()"]]];
 
-    ZKParser* selectStmt = [f seq:@[select, ws, fieldList, ws, from, ws, ident]];
+    ZKParser *objectRef = [f seq:@[ident, [f zeroOrOne:[f seq:@[ws, ident]]]] onMatch:^NSObject *(NSArray *m) {
+        if (m.count == 1) {
+            return @[m[0], @""];
+        }
+        return @[m[0], m[1][0]];
+    }];
+    ZKParser *objectRefs = [f oneOrMore:objectRef separator:commaSep];
+    
+    ZKParser *filterScope = [f zeroOrOne:[[ws then:@[[f eq:@"USING"], ws, [f eq:@"SCOPE"], ws, ident]] onMatch:pick(2)]];
+    
+    ZKParser* selectStmt = [[f eq:@"SELECT"] then:@[ws, selectExprs, ws, [f eq:@"FROM"], ws, objectRefs, filterScope]];
+
     NSError *err = nil;
     NSObject *r = [@"SELECT contact, account.name from contacts" parse:selectStmt error:&err];
-    XCTAssertEqualObjects(r, (@[@"SELECT", @[@"contact",@"account.name"], @"from", @"contacts"]));
+    XCTAssertEqualObjects(r, (@[@"SELECT", @[@[@"contact"],@[@"account",@"name"]], @"from", @[@[@"contacts",@""]]]));
+    XCTAssertNil(err);
+
     r = [@"SELECT contact,account.name from contacts" parse:selectStmt error:&err];
-    XCTAssertEqualObjects(r, (@[@"SELECT", @[@"contact",@"account.name"], @"from", @"contacts"]));
+    XCTAssertEqualObjects(r, (@[@"SELECT", @[@[@"contact"],@[@"account",@"name"]], @"from", @[@[@"contacts",@""]]]));
+    XCTAssertNil(err);
+
     r = [@"SELECTcontact,account.name from contacts" parse:selectStmt error:&err];
     XCTAssertEqualObjects(@"expecting whitespace at position 7", err.localizedDescription);
 
     r = [@"SELECT count() from contacts" parse:selectStmt error:&err];
-    XCTAssertEqualObjects(r, (@[@"SELECT", @"count()", @"from", @"contacts"]));
+    XCTAssertEqualObjects(r, (@[@"SELECT", @"count()", @"from", @[@[@"contacts",@""]]]));
+    XCTAssertNil(err);
 
     r = [@"SELECT max(createdDate) from contacts" parse:selectStmt error:&err];
-    XCTAssertEqualObjects(r, (@[@"SELECT", @[@[@"max",@"createdDate"]], @"from", @"contacts"]));
+    XCTAssertEqualObjects(r, (@[@"SELECT", @[@[@"max",@[@"createdDate"]]], @"from", @[@[@"contacts",@""]]]));
+    XCTAssertNil(err);
 
     r = [@"SELECT name, max(createdDate) from contacts" parse:selectStmt error:&err];
-    XCTAssertEqualObjects(r, (@[@"SELECT", @[@"name",@[@"max",@"createdDate"]], @"from", @"contacts"]));
+    XCTAssertEqualObjects(r, (@[@"SELECT", @[@[@"name"],@[@"max",@[@"createdDate"]]], @"from", @[@[@"contacts",@""]]]));
+    XCTAssertNil(err);
+
+    r = [@"SELECT c.name from contacts c" parse:selectStmt error:&err];
+    XCTAssertEqualObjects(r, (@[@"SELECT", @[@[@"c",@"name"]], @"from", @[@[@"contacts",@"c"]]]));
+    XCTAssertNil(err);
+    
+    r = [@"SELECT name, max(createdDate) from contacts c,account a" parse:selectStmt error:&err];
+    XCTAssertEqualObjects(r, (@[@"SELECT", @[@[@"name"],@[@"max",@[@"createdDate"]]], @"from", @[@[@"contacts",@"c"],@[@"account",@"a"]]]));
+    XCTAssertNil(err);
+
+    r = [@"SELECT c.name from contacts c using scope delegated" parse:selectStmt error:&err];
+    XCTAssertEqualObjects(r, (@[@"SELECT", @[@[@"c",@"name"]], @"from", @[@[@"contacts",@"c"]],@"delegated"]));
+    XCTAssertNil(err);
 }
 
-- (void)testPerformanceExample {
-    // This is an example of a performance test case.
-    [self measureBlock:^{
-        [self testSoql];
-        [self testSoql];
-        [self testSoql];
-        [self testSoql];
-        [self testSoql];
-        // Put the code you want to measure the time of here.
-    }];
-}
+//- (void)testPerformanceExample {
+//    // This is an example of a performance test case.
+//    [self measureBlock:^{
+//        [self testSoql];
+//        [self testSoql];
+//        [self testSoql];
+//        [self testSoql];
+//        [self testSoql];
+//        // Put the code you want to measure the time of here.
+//    }];
+//}
 
 @end
