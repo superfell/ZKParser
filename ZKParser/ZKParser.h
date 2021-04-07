@@ -13,6 +13,13 @@ typedef enum ZKCaseSensitivity {
     CaseInsensitive,
 } ZKCaseSensitivity;
 
+@class ZKParserInput;
+
+typedef NSObject *(^ZKParser)(ZKParserInput*, NSError **);
+
+@interface NSString(ZKParsing)
+-(NSObject*)parse:(ZKParser)p error:(NSError **)err;
+@end
 
 @interface ZKParserInput : NSObject
 
@@ -26,11 +33,12 @@ typedef enum ZKCaseSensitivity {
 
 -(void)rewindTo:(NSUInteger)pos;
 
+-(NSObject *)parse:(ZKParser)parser error:(NSError **)err;
+
 @end
 
-typedef NSObject *(^ZKParser)(ZKParserInput*, NSError **);
-
 @interface ZKParserFactory : NSObject
+
 -(ZKParser)whitespace;
 -(ZKParser)maybeWhitespace;
 -(ZKParser)exactly:(NSString *)s;
@@ -45,7 +53,5 @@ typedef NSObject *(^ZKParser)(ZKParserInput*, NSError **);
 -(ZKParser)zeroOrMore:(ZKParser)p;
 
 -(ZKParser)map:(ZKParser)p onMatch:(NSObject *(^)(NSObject *))block;
-
-+(NSObject *)parse:(ZKParser)parser input:(NSString *)input error:(NSError **)err;
 
 @end

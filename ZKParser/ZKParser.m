@@ -8,6 +8,15 @@
 
 #import "ZKParser.h"
 
+@implementation NSString(ZKParsing)
+
+-(NSObject*)parse:(ZKParser)p error:(NSError **)err {
+    return [[ZKParserInput withInput:self] parse:p error:err];
+}
+
+@end
+
+
 @interface ZKParserInput()
 @property (assign) NSString *input;
 @property (assign) NSUInteger pos;
@@ -54,6 +63,17 @@
 
 -(void)rewindTo:(NSUInteger)pos {
     self.pos = pos;
+}
+
+-(NSObject *)parse:(ZKParser)p error:(NSError **)err {
+    *err = nil;
+    NSObject *res = p(self, err);
+    if (self.length > 0 && *err == nil) {
+        NSString *msg = [NSString stringWithFormat:@"Unexpected input '%@' at position %lu", self.value, (unsigned long)self.pos+1];
+        *err = [NSError errorWithDomain:@"Parser" code:-1 userInfo:@{NSLocalizedDescriptionKey:msg, @"Position":@(self.pos+1)}];
+        return nil;
+    }
+    return res;
 }
 
 @end
@@ -214,18 +234,6 @@
 
 -(ZKParser)zeroOrMore:(ZKParser)p {
     return [self repeating:p minCount:0];
-}
-
-+(NSObject *)parse:(ZKParser)parser input:(NSString *)input error:(NSError **)err {
-    ZKParserInput *i = [ZKParserInput withInput:input];
-    *err = nil;
-    NSObject *res = parser(i, err);
-    if (i.length > 0 && *err == nil) {
-        NSString *msg = [NSString stringWithFormat:@"Unexpected input '%@' at position %lu", i.value, (unsigned long)i.pos+1];
-        *err = [NSError errorWithDomain:@"Parser" code:-1 userInfo:@{NSLocalizedDescriptionKey:msg, @"Position":@(i.pos+1)}];
-        return nil;
-    }
-    return res;
 }
 
 @end
