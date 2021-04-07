@@ -8,6 +8,12 @@
 
 #import <Foundation/Foundation.h>
 
+typedef enum ZKCaseSensitivity {
+    CaseSensitive,
+    CaseInsensitive,
+} ZKCaseSensitivity;
+
+
 @interface ZKParserInput : NSObject
 
 +(ZKParserInput *)withInput:(NSString *)s;
@@ -15,7 +21,7 @@
 -(NSUInteger)length;
 -(NSString *)value;
 
--(BOOL)consumeString:(NSString *)s;
+-(NSString *)consumeString:(NSString *)s caseSensitive:(ZKCaseSensitivity)cs;
 -(BOOL)consumeCharacterSet:(NSCharacterSet *)s;
 
 -(void)rewindTo:(NSUInteger)pos;
@@ -27,7 +33,9 @@ typedef NSObject *(^ZKParser)(ZKParserInput*, NSError **);
 @interface ZKParserFactory : NSObject
 +(ZKParser)whitespace;
 +(ZKParser)exactly:(NSString *)s;
-+(ZKParser)exactly:(NSString *)s onMatch:(NSObject *(^)(NSString *))block;
++(ZKParser)exactly:(NSString *)s case:(ZKCaseSensitivity)c;
++(ZKParser)exactly:(NSString *)s case:(ZKCaseSensitivity)c onMatch:(NSObject *(^)(NSString *))block;
++(ZKParser)characters:(NSCharacterSet*)set name:(NSString *)name min:(NSUInteger)minMatches;
 
 +(ZKParser)seq:(NSArray<ZKParser>*)items;
 +(ZKParser)oneOf:(NSArray<ZKParser>*)items;  // NSFastEnumeration ? // onMatch version

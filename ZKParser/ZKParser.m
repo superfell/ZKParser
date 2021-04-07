@@ -30,12 +30,14 @@
     return [self.input substringFromIndex:self.pos];
 }
 
--(BOOL)consumeString:(NSString *)s {
-    if (self.length > 0 && [self.input compare:s options:NSLiteralSearch range:NSMakeRange(self.pos, MIN(self.length, s.length))] == NSOrderedSame) {
+-(NSString *)consumeString:(NSString *)s caseSensitive:(ZKCaseSensitivity)cs {
+    NSStringCompareOptions opt = cs == CaseSensitive ? NSLiteralSearch : NSCaseInsensitiveSearch;
+    NSRange rng = NSMakeRange(self.pos, s.length);
+    if (self.length >= s.length && [self.input compare:s options:opt range:rng] == NSOrderedSame) {
         self.pos += s.length;
-        return YES;
+        return [self.input substringWithRange:rng];
     }
-    return NO;
+    return nil;
 }
 
 -(BOOL)consumeCharacterSet:(NSCharacterSet *)s {
@@ -58,32 +60,52 @@
 
 @implementation ZKParserFactory
 
-+(ZKParser)exactly:(NSString *)s onMatch:(NSObject *(^)(NSString *))block {
++(ZKParser)exactly:(NSString *)s case:(ZKCaseSensitivity)c onMatch:(NSObject *(^)(NSString *))block {
     return ^NSObject *(ZKParserInput *input, NSError **err) {
-        if ([input consumeString:s]) {
-            return block(s);
+        NSString *res = [input consumeString:s caseSensitive:c];
+        if (res != nil) {
+            return block(res);
         }
         *err = [NSError errorWithDomain:@"Parser" code:2 userInfo:@{NSLocalizedDescriptionKey:[NSString stringWithFormat:@"expecting '%@' at position %lu", s, input.pos], @"Position":@(input.pos)}];
         return nil;
     };
 }
 
-+(ZKParser)exactly:(NSString *)s {
-    return [ZKParserFactory exactly:s onMatch:^NSObject *(NSString *m) {
++(ZKParser)exactly:(NSString *)s case:(ZKCaseSensitivity)c {
+    return [ZKParserFactory exactly:s case:c onMatch:^NSObject *(NSString *m) {
         return m;
     }];
 }
 
++(ZKParser)exactly:(NSString *)s {
+    return [ZKParserFactory exactly:s case:CaseSensitive];
+}
+
 +(ZKParser)whitespace {
     return ^NSObject *(ZKParserInput *input, NSError **err) {
+        ZKParser ws = [ZKParserFactory characters:[NSCharacterSet whitespaceCharacterSet] name:@"whitespace" min:1];
+        NSObject *res = ws(input, err);
+        return res == nil ? nil : @" ";
+    };
+}
+
++(ZKParser)characters:(NSCharacterSet*)set name:(NSString*)name min:(NSUInteger)minMatches {
+    return ^NSObject *(ZKParserInput *input, NSError **err) {
         NSInteger count = 0;
+        NSInteger start = input.pos;
         while (true) {
-            if (![input consumeCharacterSet:[NSCharacterSet whitespaceCharacterSet]]) {
-                if (count == 0) {
-                    *err = [NSError errorWithDomain:@"Parser" code:3 userInfo:@{NSLocalizedDescriptionKey:[NSString stringWithFormat:@"expecting whitespace at position %lu", input.pos], @"Position": @(input.pos)}];
+            if (![input consumeCharacterSet:set]) {
+                if (count < minMatches) {
+                    *err = [NSError errorWithDomain:@"Parser"
+                                               code:3
+                                           userInfo:@{
+                                               NSLocalizedDescriptionKey:[NSString stringWithFormat:@"expecting %@ at position %lu", name, start],
+                                               @"Position": @(start)
+                                           }];
+                    [input rewindTo:start];
                     return nil;
                 }
-                return @" ";
+                return [input.input substringWithRange:NSMakeRange(start, count)];
             }
             count++;
         }
