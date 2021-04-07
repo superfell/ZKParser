@@ -33,13 +33,13 @@
     XCTAssertNil(err);
     XCTAssertEqualObjects(r,  @"Alice");
     XCTAssertNil([ZKParserFactory parse:p input:@"Eve" error:&err]);
-    XCTAssertNil(err);
+    XCTAssertEqualObjects(@"expecting 'Bob' at position 0", err.localizedDescription);
     XCTAssertNil([ZKParserFactory parse:p input:@"Bo" error:&err]);
-    XCTAssertNil(err);
+    XCTAssertEqualObjects(@"expecting 'Bob' at position 0", err.localizedDescription);
     XCTAssertNil([ZKParserFactory parse:p input:@"Boc" error:&err]);
-    XCTAssertNil(err);
+    XCTAssertEqualObjects(@"expecting 'Bob' at position 0", err.localizedDescription);
     XCTAssertNil([ZKParserFactory parse:p input:@"Alice" error:&err]);
-    XCTAssertNil(err);
+    XCTAssertEqualObjects(@"expecting 'Bob' at position 0", err.localizedDescription);
 }
 
 -(void)testOneOf {
@@ -81,8 +81,20 @@
 -(void)testWhitespace {
     ZKParser ws = [ZKParserFactory whitespace];
     ZKParserInput *i = [ZKParserInput withInput:@" Hello"];
-    ws(i);
+    NSError *err = nil;
+    ws(i, &err);
     XCTAssertEqualObjects(@"Hello", i.value);
+    XCTAssertNil(err);
+
+    i = [ZKParserInput withInput:@" \t Hello"];
+    ws(i, &err);
+    XCTAssertEqualObjects(@"Hello", i.value);
+    XCTAssertNil(err);
+
+    i = [ZKParserInput withInput:@"Hello"];
+    ws(i, &err);
+    XCTAssertEqual(5, i.length);
+    XCTAssertEqualObjects(@"expecting whitespace at position 0", err.localizedDescription);
 }
 
 -(void)testOneOrMore {
@@ -91,14 +103,51 @@
     }];
     ZKParser bobs = [ZKParserFactory oneOrMore:bob];
     NSObject *exp = @[@"B",@"B",@"B"];
-    XCTAssertEqualObjects(exp, bobs([ZKParserInput withInput:@"BobBobBob"]));
+    NSError *err = nil;
+    XCTAssertEqualObjects(exp, bobs([ZKParserInput withInput:@"BobBobBob"], &err));
+    XCTAssertNil(err);
+}
+
+-(void)testZeroOrMore {
+    ZKParser bob = [ZKParserFactory exactly:@"Bob"];
+    ZKParser maybeBobs = [ZKParserFactory zeroOrMore:bob];
+    NSError *err = nil;
+    NSObject *r = [ZKParserFactory parse:maybeBobs input:@"Bob" error:&err];
+    XCTAssertEqualObjects(@[@"Bob"], r);
+    XCTAssertNil(err);
+
+    r = [ZKParserFactory parse:maybeBobs input:@"" error:&err];
+    XCTAssertEqualObjects(@[], r);
+    XCTAssertNil(err);
+
+    r = [ZKParserFactory parse:maybeBobs input:@"BobBob" error:&err];
+    XCTAssertEqualObjects((@[@"Bob",@"Bob"]), r);
+    XCTAssertNil(err);
+    
+    ZKParser alice = [ZKParserFactory exactly:@"Alice"];
+    ZKParser aliceAndMaybeBobs = [ZKParserFactory seq:@[alice, [ZKParserFactory whitespace], maybeBobs]];
+    r = [ZKParserFactory parse:aliceAndMaybeBobs input:@"Alice" error:&err];
+    XCTAssertNil(r);
+    XCTAssertEqualObjects(@"expecting whitespace at position 5", err.localizedDescription);
+
+    r = [ZKParserFactory parse:aliceAndMaybeBobs input:@"Alice " error:&err];
+    XCTAssertNil(err);
+    XCTAssertEqualObjects((@[@"Alice", @" ",@[]]), r);
+
+    r = [ZKParserFactory parse:aliceAndMaybeBobs input:@"Alice Bob" error:&err];
+    XCTAssertEqualObjects((@[@"Alice", @" ", @[@"Bob"]]), r);
+    XCTAssertNil(err);
+
+    r = [ZKParserFactory parse:aliceAndMaybeBobs input:@"Alice BobBob" error:&err];
+    XCTAssertEqualObjects((@[@"Alice", @" ", @[@"Bob", @"Bob"]]), r);
+    XCTAssertNil(err);
 }
 
 - (void)testPerformanceExample {
     // This is an example of a performance test case.
-    [self measureBlock:^{
+//    [self measureBlock:^{
         // Put the code you want to measure the time of here.
-    }];
+  //  }];
 }
 
 @end

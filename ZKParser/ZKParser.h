@@ -22,15 +22,17 @@
 
 @end
 
-typedef NSObject *(^ZKParser)(ZKParserInput*);
+typedef NSObject *(^ZKParser)(ZKParserInput*, NSError **);
 
 @interface ZKParserFactory : NSObject
 +(ZKParser)whitespace;
++(ZKParser)exactly:(NSString *)s;
 +(ZKParser)exactly:(NSString *)s onMatch:(NSObject *(^)(NSString *))block;
 
-+(ZKParser)seq:(NSArray *)items;
-+(ZKParser)oneOf:(NSArray *)items;  // NSFastEnumeration ? // onMatch version
++(ZKParser)seq:(NSArray<ZKParser>*)items;
++(ZKParser)oneOf:(NSArray<ZKParser>*)items;  // NSFastEnumeration ? // onMatch version
 +(ZKParser)oneOrMore:(ZKParser)p;
++(ZKParser)zeroOrMore:(ZKParser)p;
 
 +(NSObject *)parse:(ZKParser)parser input:(NSString *)input error:(NSError **)err;
 
