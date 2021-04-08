@@ -24,6 +24,7 @@ typedef NSObject *(^mapperBlock)(NSObject *);
 @property (strong, nonatomic) ZKParser *inner;
 @property (strong, nonatomic) mapperBlock block;
 @end
+
 @interface ZKParserExact : ZKParser
 @property (strong,nonatomic) NSString *match;
 @property (assign,nonatomic) ZKCaseSensitivity caseSensitivity;
@@ -31,14 +32,13 @@ typedef NSObject *(^mapperBlock)(NSObject *);
 @property (assign,nonatomic) BOOL returnValue;
 @end
 
-@interface ZKParserRepeat : ZKParser
+@interface ZKParserRepeat()
 +(instancetype)repeated:(ZKParser*)p sep:(ZKParser*)sep min:(NSUInteger)min max:(NSUInteger)max;
-
 @property (strong,nonatomic) ZKParser *parser;
 @property (strong,nonatomic) ZKParser *separator;
 @property (assign,nonatomic) NSUInteger min;
 @property (assign,nonatomic) NSUInteger max;
-@property (strong,nonatomic) NSObject*(^onMatch)(NSArray*);
+@property (strong,nonatomic) NSObject*(^matchBlock)(NSArray*);
 @end
 
 @interface ZKParserCharSet : ZKParser
@@ -101,7 +101,7 @@ typedef NSObject *(^mapperBlock)(NSObject *);
     NSString *res = [input consumeString:self.match caseSensitive:self.caseSensitivity];
     if (res != nil) {
         if (!self.returnValue) {
-            return nil;
+            return [NSNull null];
         }
         return self.onMatch == nil ? res : self.onMatch(res);
     }
@@ -136,7 +136,7 @@ typedef NSObject *(^mapperBlock)(NSObject *);
                 [input rewindTo:start];
                 return nil;
             }
-            return self.returnValue ? [input valueOfRange:NSMakeRange(start, count)] : nil;
+            return self.returnValue ? [input valueOfRange:NSMakeRange(start, count)] : [NSNull null];
         }
         count++;
     }
@@ -206,9 +206,7 @@ typedef NSObject *(^mapperBlock)(NSObject *);
             [input rewindTo:start];
             return nil;
         }
-        if (res != nil) {
-            [out addObject:res];
-        }
+        [out addObject:res];
     }
     if (self.matchBlock != nil) {
         return self.matchBlock(out);
@@ -242,10 +240,15 @@ typedef NSObject *(^mapperBlock)(NSObject *);
     r.separator = sep;
     r.min = min;
     r.max = max;
-    r.onMatch = ^NSObject *(NSArray *r) {
+    r.matchBlock = ^NSObject *(NSArray *r) {
         return r;
     };
     return r;
+}
+
+-(ZKParserRepeat*)onMatch:(NSObject *(^)(NSArray *))block {
+    self.matchBlock = block;
+    return self;
 }
 
 -(NSObject *)parse:(ZKParserInput*)input error:(NSError **)err {
@@ -253,10 +256,8 @@ typedef NSObject *(^mapperBlock)(NSObject *);
     NSMutableArray *out = [NSMutableArray array];
     NSError *nextError = nil;
     NSObject *first = [self.parser parse:input error:&nextError];
-    if (first != nil) {
-        [out addObject:first];
-    }
     if (nextError == nil) {
+        [out addObject:first];
         while (out.count < self.max) {
             NSUInteger thisStart = input.pos;
             if (self.separator != nil) {
@@ -271,13 +272,11 @@ typedef NSObject *(^mapperBlock)(NSObject *);
                 [input rewindTo:thisStart];
                 break;
             }
-            if (next != nil) {
-                [out addObject:next];
-            }
+            [out addObject:next];
         }
     }
     if (out.count >= self.min) {
-        return self.onMatch(out);
+        return self.matchBlock(out);
     }
     *err = nextError;
     [input rewindTo:start];
@@ -301,7 +300,7 @@ typedef NSObject *(^mapperBlock)(NSObject *);
     }
     *err = nil;
     [input rewindTo:start];
-    return nil;
+    return [NSNull null];
 }
 
 -(NSString *)description {
@@ -417,27 +416,27 @@ typedef NSObject *(^mapperBlock)(NSObject *);
     return o;
 }
 
--(ZKParser*)zeroOrMore:(ZKParser*)p {
+-(ZKParserRepeat*)zeroOrMore:(ZKParser*)p {
     return [ZKParserRepeat repeated:p sep:NULL min:0 max:NSUIntegerMax];
 }
 
--(ZKParser*)oneOrMore:(ZKParser*)p {
+-(ZKParserRepeat*)oneOrMore:(ZKParser*)p {
     return [ZKParserRepeat repeated:p sep:NULL min:1 max:NSUIntegerMax];
 }
 
--(ZKParser*)zeroOrMore:(ZKParser*)p separator:(ZKParser*)sep {
+-(ZKParserRepeat*)zeroOrMore:(ZKParser*)p separator:(ZKParser*)sep {
     return [ZKParserRepeat repeated:p sep:sep min:0 max:NSUIntegerMax];
 }
 
--(ZKParser*)oneOrMore:(ZKParser*)p separator:(ZKParser*)sep {
+-(ZKParserRepeat*)oneOrMore:(ZKParser*)p separator:(ZKParser*)sep {
     return [ZKParserRepeat repeated:p sep:sep min:1 max:NSUIntegerMax];
 }
 
--(ZKParser*)zeroOrMore:(ZKParser*)p separator:(ZKParser*)sep max:(NSUInteger)maxItems {
+-(ZKParserRepeat*)zeroOrMore:(ZKParser*)p separator:(ZKParser*)sep max:(NSUInteger)maxItems {
     return [ZKParserRepeat repeated:p sep:sep min:0 max:maxItems];
 }
 
--(ZKParser*)oneOrMore:(ZKParser*)p separator:(ZKParser*)sep max:(NSUInteger)maxItems {
+-(ZKParserRepeat*)oneOrMore:(ZKParser*)p separator:(ZKParser*)sep max:(NSUInteger)maxItems {
     return [ZKParserRepeat repeated:p sep:sep min:1 max:maxItems];
 }
 

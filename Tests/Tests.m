@@ -191,136 +191,15 @@ ZKParserFactory *f = nil;
 
     r = [@"Alice " parse:aliceAndMaybeBobs error:&err];
     XCTAssertNil(err);
-    XCTAssertEqualObjects((@[@"Alice",@[]]), r);
+    XCTAssertEqualObjects((@[@"Alice", [NSNull null], @[]]), r);
 
     r = [@"Alice Bob" parse:aliceAndMaybeBobs error:&err];
-    XCTAssertEqualObjects((@[@"Alice",  @[@"Bob"]]), r);
+    XCTAssertEqualObjects((@[@"Alice", [NSNull null], @[@"Bob"]]), r);
     XCTAssertNil(err);
 
     r = [@"Alice BobBob" parse:aliceAndMaybeBobs error:&err];
-    XCTAssertEqualObjects((@[@"Alice", @[@"Bob", @"Bob"]]), r);
+    XCTAssertEqualObjects((@[@"Alice", [NSNull null], @[@"Bob", @"Bob"]]), r);
     XCTAssertNil(err);
 }
-
-typedef NSObject*(^arrayBlock)(NSArray*);
-
-arrayBlock pick(NSUInteger idx) {
-    return ^NSObject *(NSArray *m) {
-        return m[idx];
-    };
-}
-
--(void)testSoql {
-    NSSet<NSString*>* keywords = [NSSet setWithArray:@[@"from",@"where",@"order",@"by",@"having",@"limit",@"offset",@"group by",@"using",@"scope"]];
-    BOOL(^ignoreKeywords)(NSObject*) = ^BOOL(NSObject *v) {
-        NSString *s = (NSString *)v;
-        return [keywords containsObject:[s lowercaseString]];
-    };
-    f.defaultCaseSensitivity = CaseInsensitive;
-    ZKParser* ws = [f whitespace];
-    ZKParser* maybeWs = [f maybeWhitespace];
-    ZKParser* commaSep = [f seq:@[maybeWs, [f skip:@","], maybeWs]];
-    ZKParser* ident = [f characters:[NSCharacterSet characterSetWithCharactersInString:@"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_"]
-                               name:@"identifier"
-                                min:1];
-
-    ZKParser* field = [f oneOrMore:ident separator:[f eq:@"."]];
-    ZKParser* func = [f seq:@[ident,
-                              maybeWs,
-                              [f skip:@"("],
-                              maybeWs,
-                              field,
-                              maybeWs,
-                              [f skip:@")"],
-                              [f zeroOrOne:[[ws then:@[ident]] onMatch:pick(0)] ignoring:ignoreKeywords]]];
-    
-    ZKParser* selectExpr = [field or:@[func]];
-    ZKParser* selectExprs = [f oneOrMore:selectExpr separator:commaSep];
-    selectExprs = [selectExprs or:@[[f eq:@"count()"]]];
-
-    ZKParser *objectRef = [f seq:@[ident, [f zeroOrOne:[f seq:@[ws, ident] onMatch:pick(0)] ignoring:ignoreKeywords]]];
-    ZKParser *objectRefs = [f oneOrMore:objectRef separator:commaSep];
-    
-    ZKParser *filterScope = [f zeroOrOne:[[ws then:@[[f eq:@"USING"], ws, [f eq:@"SCOPE"], ws, ident]] onMatch:pick(2)]];
-    
-    ZKParser *ascDesc = [f seq:@[ws, [f oneOf:@[[f eq:@"ASC"],[f eq:@"DESC"]]]] onMatch:pick(0)];
-    ZKParser *nulls = [f seq:@[ws, [f eq:@"NULLS"], ws, [f oneOf:@[[f eq:@"FIRST"], [f eq:@"LAST"]]]]];
-    ZKParser *orderByField = [f seq:@[field, [f zeroOrOne:ascDesc], [f zeroOrOne:nulls]]];
-    ZKParser *orderByFields = [f zeroOrOne:[f seq:@[ws,[f skip:@"ORDER"],ws,[f skip:@"BY"],ws,[f oneOrMore:orderByField separator:commaSep]] onMatch:pick(0)]];
-
-    ZKParser* selectStmt = [[f eq:@"SELECT"] then:@[ws, selectExprs, ws, [f eq:@"FROM"], ws, objectRefs, filterScope, orderByFields]];
-
-    NSError *err = nil;
-    NSObject *r = [@"SELECT contact, account.name from contacts" parse:selectStmt error:&err];
-    XCTAssertEqualObjects(r, (@[@"SELECT", @[@[@"contact"],@[@"account",@"name"]], @"from", @[@[@"contacts"]]]));
-    XCTAssertNil(err);
-
-    r = [@"SELECT contact,account.name from contacts" parse:selectStmt error:&err];
-    XCTAssertEqualObjects(r, (@[@"SELECT", @[@[@"contact"],@[@"account",@"name"]], @"from", @[@[@"contacts"]]]));
-    XCTAssertNil(err);
-
-    r = [@"SELECTcontact,account.name from contacts" parse:selectStmt error:&err];
-    XCTAssertEqualObjects(@"expecting whitespace at position 7", err.localizedDescription);
-
-    r = [@"SELECT count() from contacts" parse:selectStmt error:&err];
-    XCTAssertEqualObjects(r, (@[@"SELECT", @"count()", @"from", @[@[@"contacts"]]]));
-    XCTAssertNil(err);
-
-    r = [@"SELECT max(createdDate) from contacts" parse:selectStmt error:&err];
-    XCTAssertEqualObjects(r, (@[@"SELECT", @[@[@"max",@[@"createdDate"]]], @"from", @[@[@"contacts"]]]));
-    XCTAssertNil(err);
-
-    r = [@"SELECT name, max(createdDate) from contacts" parse:selectStmt error:&err];
-    XCTAssertEqualObjects(r, (@[@"SELECT", @[@[@"name"],@[@"max",@[@"createdDate"]]], @"from", @[@[@"contacts"]]]));
-    XCTAssertNil(err);
-
-    r = [@"SELECT name, max(createdDate) max_date from contacts" parse:selectStmt error:&err];
-    XCTAssertEqualObjects(r, (@[@"SELECT", @[@[@"name"],@[@"max",@[@"createdDate"],@"max_date"]], @"from", @[@[@"contacts"]]]));
-    XCTAssertNil(err);
-
-    r = [@"SELECT c.name from contacts c" parse:selectStmt error:&err];
-    XCTAssertEqualObjects(r, (@[@"SELECT", @[@[@"c",@"name"]], @"from", @[@[@"contacts",@"c"]]]));
-    XCTAssertNil(err);
-    
-    r = [@"SELECT name, max(createdDate) from contacts c,account a" parse:selectStmt error:&err];
-    XCTAssertEqualObjects(r, (@[@"SELECT", @[@[@"name"],@[@"max",@[@"createdDate"]]], @"from", @[@[@"contacts",@"c"],@[@"account",@"a"]]]));
-    XCTAssertNil(err);
-
-    r = [@"SELECT name from contacts , account a" parse:selectStmt error:&err];
-    XCTAssertEqualObjects(r, (@[@"SELECT", @[@[@"name"]], @"from", @[@[@"contacts"],@[@"account",@"a"]]]));
-    XCTAssertNil(err);
-
-    r = [@"SELECT c.name from contacts c using scope delegated" parse:selectStmt error:&err];
-    XCTAssertEqualObjects(r, (@[@"SELECT", @[@[@"c",@"name"]], @"from", @[@[@"contacts",@"c"]],@"delegated"]));
-    XCTAssertNil(err);
-
-    r = [@"SELECT name from contacts order by name" parse:selectStmt error:&err];
-    XCTAssertEqualObjects(r, (@[@"SELECT", @[@[@"name"]], @"from", @[@[@"contacts"]], @[@[@[@"name"]]]]));
-    XCTAssertNil(err);
-
-    r = [@"SELECT name from contacts order by name asc" parse:selectStmt error:&err];
-    XCTAssertEqualObjects(r, (@[@"SELECT", @[@[@"name"]], @"from", @[@[@"contacts"]], @[@[@[@"name"],@"asc"]]]));
-    XCTAssertNil(err);
-
-    r = [@"SELECT name from contacts order by name nulls  last" parse:selectStmt error:&err];
-    XCTAssertEqualObjects(r, (@[@"SELECT", @[@[@"name"]], @"from", @[@[@"contacts"]], @[@[@[@"name"],@[@"nulls", @"last"]]]]));
-    XCTAssertNil(err);
-
-    r = [@"SELECT name from contacts order by name desc nulls first" parse:selectStmt error:&err];
-    XCTAssertEqualObjects(r, (@[@"SELECT", @[@[@"name"]], @"from", @[@[@"contacts"]], @[@[@[@"name"],@"desc", @[@"nulls", @"first"]]]]));
-    XCTAssertNil(err);
-}
-
-//- (void)testPerformanceExample {
-//    // This is an example of a performance test case.
-//    [self measureBlock:^{
-//        [self testSoql];
-//        [self testSoql];
-//        [self testSoql];
-//        [self testSoql];
-//        [self testSoql];
-//        // Put the code you want to measure the time of here.
-//    }];
-//}
 
 @end

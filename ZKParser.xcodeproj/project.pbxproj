@@ -14,6 +14,10 @@
 		F438E480261E276E0010D90E /* ZKParserInput.h in Headers */ = {isa = PBXBuildFile; fileRef = F438E47E261E276E0010D90E /* ZKParserInput.h */; };
 		F438E481261E276E0010D90E /* ZKParserInput.m in Sources */ = {isa = PBXBuildFile; fileRef = F438E47F261E276E0010D90E /* ZKParserInput.m */; };
 		F438E482261E276E0010D90E /* ZKParserInput.m in Sources */ = {isa = PBXBuildFile; fileRef = F438E47F261E276E0010D90E /* ZKParserInput.m */; };
+		F438E487261F77A70010D90E /* Soql.h in Headers */ = {isa = PBXBuildFile; fileRef = F438E485261F77A70010D90E /* Soql.h */; };
+		F438E488261F77A70010D90E /* Soql.m in Sources */ = {isa = PBXBuildFile; fileRef = F438E486261F77A70010D90E /* Soql.m */; };
+		F438E489261F77A70010D90E /* Soql.m in Sources */ = {isa = PBXBuildFile; fileRef = F438E486261F77A70010D90E /* Soql.m */; };
+		F438E48E261F7C960010D90E /* SoqlTests.m in Sources */ = {isa = PBXBuildFile; fileRef = F438E48C261F7C960010D90E /* SoqlTests.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -35,6 +39,9 @@
 		F412B67F2543DE0900B36A77 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		F438E47E261E276E0010D90E /* ZKParserInput.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ZKParserInput.h; sourceTree = "<group>"; };
 		F438E47F261E276E0010D90E /* ZKParserInput.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ZKParserInput.m; sourceTree = "<group>"; };
+		F438E485261F77A70010D90E /* Soql.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Soql.h; sourceTree = "<group>"; };
+		F438E486261F77A70010D90E /* Soql.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = Soql.m; sourceTree = "<group>"; };
+		F438E48C261F7C960010D90E /* SoqlTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SoqlTests.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -81,6 +88,8 @@
 				F412B66B2543D14D00B36A77 /* ZKParser.m */,
 				F438E47E261E276E0010D90E /* ZKParserInput.h */,
 				F438E47F261E276E0010D90E /* ZKParserInput.m */,
+				F438E485261F77A70010D90E /* Soql.h */,
+				F438E486261F77A70010D90E /* Soql.m */,
 			);
 			path = ZKParser;
 			sourceTree = "<group>";
@@ -90,6 +99,7 @@
 			children = (
 				F412B67D2543DE0900B36A77 /* Tests.m */,
 				F412B67F2543DE0900B36A77 /* Info.plist */,
+				F438E48C261F7C960010D90E /* SoqlTests.m */,
 			);
 			path = Tests;
 			sourceTree = "<group>";
@@ -101,6 +111,7 @@
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F438E487261F77A70010D90E /* Soql.h in Headers */,
 				F412B66A2543D14D00B36A77 /* ZKParser.h in Headers */,
 				F438E480261E276E0010D90E /* ZKParserInput.h in Headers */,
 			);
@@ -196,6 +207,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F438E481261E276E0010D90E /* ZKParserInput.m in Sources */,
+				F438E488261F77A70010D90E /* Soql.m in Sources */,
 				F412B66C2543D14D00B36A77 /* ZKParser.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -204,7 +216,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F438E48E261F7C960010D90E /* SoqlTests.m in Sources */,
 				F438E482261E276E0010D90E /* ZKParserInput.m in Sources */,
+				F438E489261F77A70010D90E /* Soql.m in Sources */,
 				F412B67E2543DE0900B36A77 /* Tests.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

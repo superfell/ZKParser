@@ -29,6 +29,10 @@
 -(ZKParserSeq*)onMatch:(NSObject *(^)(NSArray *))block;
 @end
 
+@interface ZKParserRepeat : ZKParser
+-(ZKParserSeq*)onMatch:(NSObject *(^)(NSArray *))block;
+@end
+
 @interface ZKParserFactory : NSObject
 
 @property(assign,nonatomic) ZKCaseSensitivity defaultCaseSensitivity;
@@ -48,12 +52,12 @@
 -(ZKParserOneOf*)oneOf:(NSArray<ZKParser*>*)items;  // NSFastEnumeration ? // onMatch version
 -(ZKParserOneOf*)oneOf:(NSArray<ZKParser*>*)items onMatch:(NSObject *(^)(NSObject *))block;
 
--(ZKParser*)zeroOrMore:(ZKParser*)p;
--(ZKParser*)oneOrMore:(ZKParser*)p;
--(ZKParser*)zeroOrMore:(ZKParser*)p separator:(ZKParser*)sep;
--(ZKParser*)oneOrMore:(ZKParser*)p separator:(ZKParser*)sep;
--(ZKParser*)zeroOrMore:(ZKParser*)p separator:(ZKParser*)sep max:(NSUInteger)maxItems;
--(ZKParser*)oneOrMore:(ZKParser*)p separator:(ZKParser*)sep max:(NSUInteger)maxItems;
+-(ZKParserRepeat*)zeroOrMore:(ZKParser*)p;
+-(ZKParserRepeat*)oneOrMore:(ZKParser*)p;
+-(ZKParserRepeat*)zeroOrMore:(ZKParser*)p separator:(ZKParser*)sep;
+-(ZKParserRepeat*)oneOrMore:(ZKParser*)p separator:(ZKParser*)sep;
+-(ZKParserRepeat*)zeroOrMore:(ZKParser*)p separator:(ZKParser*)sep max:(NSUInteger)maxItems;
+-(ZKParserRepeat*)oneOrMore:(ZKParser*)p separator:(ZKParser*)sep max:(NSUInteger)maxItems;
 
 -(ZKParser*)zeroOrOne:(ZKParser*)p;
 -(ZKParser*)zeroOrOne:(ZKParser*)p ignoring:(BOOL(^)(NSObject*))ignoreBlock;
