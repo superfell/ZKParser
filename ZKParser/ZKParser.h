@@ -48,13 +48,15 @@
 -(ZKParserOneOf*)oneOf:(NSArray<ZKParser*>*)items;  // NSFastEnumeration ? // onMatch version
 -(ZKParserOneOf*)oneOf:(NSArray<ZKParser*>*)items onMatch:(NSObject *(^)(NSObject *))block;
 
--(ZKParser*)zeroOrOne:(ZKParser*)p;
 -(ZKParser*)zeroOrMore:(ZKParser*)p;
 -(ZKParser*)oneOrMore:(ZKParser*)p;
 -(ZKParser*)zeroOrMore:(ZKParser*)p separator:(ZKParser*)sep;
 -(ZKParser*)oneOrMore:(ZKParser*)p separator:(ZKParser*)sep;
 -(ZKParser*)zeroOrMore:(ZKParser*)p separator:(ZKParser*)sep max:(NSUInteger)maxItems;
 -(ZKParser*)oneOrMore:(ZKParser*)p separator:(ZKParser*)sep max:(NSUInteger)maxItems;
+
+-(ZKParser*)zeroOrOne:(ZKParser*)p;
+-(ZKParser*)zeroOrOne:(ZKParser*)p ignoring:(BOOL(^)(NSObject*))ignoreBlock;
 
 -(ZKParser*)map:(ZKParser*)p onMatch:(NSObject *(^)(NSObject *))block;
 

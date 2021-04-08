@@ -211,6 +211,11 @@ arrayBlock pick(NSUInteger idx) {
 }
 
 -(void)testSoql {
+    NSSet<NSString*>* keywords = [NSSet setWithArray:@[@"from",@"where",@"order by",@"limit",@"offset",@"group by",@"using",@"scope"]];
+    BOOL(^ignoreKeywords)(NSObject*) = ^BOOL(NSObject *v) {
+        NSString *s = (NSString *)v;
+        return [keywords containsObject:[s lowercaseString]];
+    };
     f.defaultCaseSensitivity = CaseInsensitive;
     ZKParser* ws = [f whitespace];
     ZKParser* maybeWs = [f maybeWhitespace];
@@ -218,9 +223,16 @@ arrayBlock pick(NSUInteger idx) {
     ZKParser* ident = [f characters:[NSCharacterSet characterSetWithCharactersInString:@"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_"]
                                name:@"identifier"
                                 min:1];
-    
+
     ZKParser* field = [f oneOrMore:ident separator:[f eq:@"."]];
-    ZKParser* func = [f seq:@[ident, maybeWs, [f skip:@"("], maybeWs, field, maybeWs, [f skip:@")"]]];
+    ZKParser* func = [f seq:@[ident,
+                              maybeWs,
+                              [f skip:@"("],
+                              maybeWs,
+                              field,
+                              maybeWs,
+                              [f skip:@")"],
+                              [f zeroOrOne:[[ws then:@[ident]] onMatch:pick(0)] ignoring:ignoreKeywords]]];
     
     ZKParser* selectExpr = [field or:@[func]];
     ZKParser* selectExprs = [f oneOrMore:selectExpr separator:commaSep];
@@ -257,12 +269,20 @@ arrayBlock pick(NSUInteger idx) {
     XCTAssertEqualObjects(r, (@[@"SELECT", @[@[@"name"],@[@"max",@[@"createdDate"]]], @"from", @[@[@"contacts"]]]));
     XCTAssertNil(err);
 
+    r = [@"SELECT name, max(createdDate) max_date from contacts" parse:selectStmt error:&err];
+    XCTAssertEqualObjects(r, (@[@"SELECT", @[@[@"name"],@[@"max",@[@"createdDate"],@"max_date"]], @"from", @[@[@"contacts"]]]));
+    XCTAssertNil(err);
+
     r = [@"SELECT c.name from contacts c" parse:selectStmt error:&err];
     XCTAssertEqualObjects(r, (@[@"SELECT", @[@[@"c",@"name"]], @"from", @[@[@"contacts",@"c"]]]));
     XCTAssertNil(err);
     
     r = [@"SELECT name, max(createdDate) from contacts c,account a" parse:selectStmt error:&err];
     XCTAssertEqualObjects(r, (@[@"SELECT", @[@[@"name"],@[@"max",@[@"createdDate"]]], @"from", @[@[@"contacts",@"c"],@[@"account",@"a"]]]));
+    XCTAssertNil(err);
+
+    r = [@"SELECT name from contacts , account a" parse:selectStmt error:&err];
+    XCTAssertEqualObjects(r, (@[@"SELECT", @[@[@"name"]], @"from", @[@[@"contacts"],@[@"account",@"a"]]]));
     XCTAssertNil(err);
 
     r = [@"SELECT c.name from contacts c using scope delegated" parse:selectStmt error:&err];

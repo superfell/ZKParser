@@ -50,6 +50,7 @@ typedef NSObject *(^mapperBlock)(NSObject *);
 
 @interface ZKParserOptional : ZKParser
 @property (strong,nonatomic) ZKParser *optional;
+@property (copy,nonatomic) BOOL(^ignoreBlock)(NSObject*);
 @end
 
 
@@ -294,7 +295,9 @@ typedef NSObject *(^mapperBlock)(NSObject *);
     NSUInteger start = input.pos;
     NSObject *res = [self.optional parse:input error:err];
     if (*err == nil) {
-        return res;
+        if (!self.ignoreBlock(res)) {
+            return res;
+        }
     }
     *err = nil;
     [input rewindTo:start];
@@ -304,6 +307,7 @@ typedef NSObject *(^mapperBlock)(NSObject *);
 -(NSString *)description {
     return [NSString stringWithFormat:@"{%@}?" , self.optional];
 }
+
 @end
 
 @implementation ZKParserFactory
@@ -400,6 +404,16 @@ typedef NSObject *(^mapperBlock)(NSObject *);
 -(ZKParser*)zeroOrOne:(ZKParser*)p {
     ZKParserOptional *o = [ZKParserOptional new];
     o.optional = p;
+    o.ignoreBlock = ^BOOL(NSObject *v) {
+        return NO;
+    };
+    return o;
+}
+
+-(ZKParser*)zeroOrOne:(ZKParser*)p ignoring:(BOOL(^)(NSObject*))ignoreBlock {
+    ZKParserOptional *o = [ZKParserOptional new];
+    o.optional = p;
+    o.ignoreBlock = ignoreBlock;
     return o;
 }
 
