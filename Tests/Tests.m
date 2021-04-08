@@ -211,7 +211,7 @@ arrayBlock pick(NSUInteger idx) {
 }
 
 -(void)testSoql {
-    NSSet<NSString*>* keywords = [NSSet setWithArray:@[@"from",@"where",@"order by",@"limit",@"offset",@"group by",@"using",@"scope"]];
+    NSSet<NSString*>* keywords = [NSSet setWithArray:@[@"from",@"where",@"order",@"by",@"having",@"limit",@"offset",@"group by",@"using",@"scope"]];
     BOOL(^ignoreKeywords)(NSObject*) = ^BOOL(NSObject *v) {
         NSString *s = (NSString *)v;
         return [keywords containsObject:[s lowercaseString]];
@@ -238,12 +238,17 @@ arrayBlock pick(NSUInteger idx) {
     ZKParser* selectExprs = [f oneOrMore:selectExpr separator:commaSep];
     selectExprs = [selectExprs or:@[[f eq:@"count()"]]];
 
-    ZKParser *objectRef = [f oneOrMore:ident separator:ws max:2];
+    ZKParser *objectRef = [f seq:@[ident, [f zeroOrOne:[f seq:@[ws, ident] onMatch:pick(0)] ignoring:ignoreKeywords]]];
     ZKParser *objectRefs = [f oneOrMore:objectRef separator:commaSep];
     
     ZKParser *filterScope = [f zeroOrOne:[[ws then:@[[f eq:@"USING"], ws, [f eq:@"SCOPE"], ws, ident]] onMatch:pick(2)]];
     
-    ZKParser* selectStmt = [[f eq:@"SELECT"] then:@[ws, selectExprs, ws, [f eq:@"FROM"], ws, objectRefs, filterScope]];
+    ZKParser *ascDesc = [f seq:@[ws, [f oneOf:@[[f eq:@"ASC"],[f eq:@"DESC"]]]] onMatch:pick(0)];
+    ZKParser *nulls = [f seq:@[ws, [f eq:@"NULLS"], ws, [f oneOf:@[[f eq:@"FIRST"], [f eq:@"LAST"]]]]];
+    ZKParser *orderByField = [f seq:@[field, [f zeroOrOne:ascDesc], [f zeroOrOne:nulls]]];
+    ZKParser *orderByFields = [f zeroOrOne:[f seq:@[ws,[f skip:@"ORDER"],ws,[f skip:@"BY"],ws,[f oneOrMore:orderByField separator:commaSep]] onMatch:pick(0)]];
+
+    ZKParser* selectStmt = [[f eq:@"SELECT"] then:@[ws, selectExprs, ws, [f eq:@"FROM"], ws, objectRefs, filterScope, orderByFields]];
 
     NSError *err = nil;
     NSObject *r = [@"SELECT contact, account.name from contacts" parse:selectStmt error:&err];
@@ -287,6 +292,22 @@ arrayBlock pick(NSUInteger idx) {
 
     r = [@"SELECT c.name from contacts c using scope delegated" parse:selectStmt error:&err];
     XCTAssertEqualObjects(r, (@[@"SELECT", @[@[@"c",@"name"]], @"from", @[@[@"contacts",@"c"]],@"delegated"]));
+    XCTAssertNil(err);
+
+    r = [@"SELECT name from contacts order by name" parse:selectStmt error:&err];
+    XCTAssertEqualObjects(r, (@[@"SELECT", @[@[@"name"]], @"from", @[@[@"contacts"]], @[@[@[@"name"]]]]));
+    XCTAssertNil(err);
+
+    r = [@"SELECT name from contacts order by name asc" parse:selectStmt error:&err];
+    XCTAssertEqualObjects(r, (@[@"SELECT", @[@[@"name"]], @"from", @[@[@"contacts"]], @[@[@[@"name"],@"asc"]]]));
+    XCTAssertNil(err);
+
+    r = [@"SELECT name from contacts order by name nulls  last" parse:selectStmt error:&err];
+    XCTAssertEqualObjects(r, (@[@"SELECT", @[@[@"name"]], @"from", @[@[@"contacts"]], @[@[@[@"name"],@[@"nulls", @"last"]]]]));
+    XCTAssertNil(err);
+
+    r = [@"SELECT name from contacts order by name desc nulls first" parse:selectStmt error:&err];
+    XCTAssertEqualObjects(r, (@[@"SELECT", @[@[@"name"]], @"from", @[@[@"contacts"]], @[@[@[@"name"],@"desc", @[@"nulls", @"first"]]]]));
     XCTAssertNil(err);
 }
 
