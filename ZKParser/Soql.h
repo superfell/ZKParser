@@ -62,6 +62,7 @@ static const NSInteger NullsLast = 3;
 @interface SelectQuery : NSObject
 @property (strong,nonatomic) NSArray *selectExprs;
 @property (strong,nonatomic) SObjectRef *from;
+@property (strong,nonatomic) PositionedString *filterScope;
 @property (strong,nonatomic) OrderBys *orderBy;
 @property (assign,nonatomic) NSInteger limit;
 @property (assign,nonatomic) NSInteger offset;

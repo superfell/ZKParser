@@ -147,7 +147,11 @@ void append(NSMutableString *q, NSArray *a) {
     [q appendString:@"SELECT "];
 
     append(q, self.selectExprs);
-    [q appendFormat:@" FROM %@%@", self.from.toSoql, self.orderBy.toSoql];
+    [q appendFormat:@" FROM %@", self.from.toSoql];
+    if (self.filterScope.val.length > 0) {
+        [q appendFormat:@" USING SCOPE %@", self.filterScope.val];
+    }
+    [q appendString:self.orderBy.toSoql];
     if (self.limit < NSIntegerMax) {
         [q appendFormat:@" LIMIT %lu", self.limit];
     }
@@ -240,7 +244,7 @@ ParserResult * pickVals(ParserResult*r) {
     }];
     ZKParser *objectRefs = [f oneOrMore:objectRef separator:commaSep];
     
-    ZKParser *filterScope = [f zeroOrOne:[[ws then:@[[f eq:@"USING"], ws, [f eq:@"SCOPE"], ws, ident]] onMatch:pick(6)]];
+    ZKParser *filterScope = [f zeroOrOne:[[ws then:@[[f eq:@"USING"], ws, [f eq:@"SCOPE"], ws, ident]] onMatch:pick(5)]];
 
     ZKParser *asc  = [f exactly:@"ASC" setValue:@YES];
     ZKParser *desc = [f exactly:@"DESC" setValue:@NO];
@@ -276,6 +280,7 @@ ParserResult * pickVals(ParserResult*r) {
         SelectQuery *q = [SelectQuery new];
         q.selectExprs = c[2].val;
         q.from = [c[6].val[0] val];
+        q.filterScope = c[7].val == [NSNull null] ? nil : [c[7] posString];
         q.orderBy = c[8].val == [NSNull null] ? [OrderBys new] : c[8].val;
         m.val= q;
         return m;

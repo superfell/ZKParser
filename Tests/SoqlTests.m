@@ -41,4 +41,22 @@ SoqlParser *p = nil;
     XCTAssertNil(err);
 }
 
+-(void)testOrderBy {
+    NSError *err = nil;
+    SelectQuery *res = [p parse:@"select id from contact order by name desc, city asc nulls last" error:&err];
+    XCTAssertEqualObjects([res toSoql], @"SELECT id FROM contact ORDER BY name DESC,city ASC NULLS LAST");
+    XCTAssertNil(err);
+    
+    res = [p parse:@"select id from contact order by name desc, city nulls first" error:&err];
+    XCTAssertEqualObjects([res toSoql], @"SELECT id FROM contact ORDER BY name DESC,city ASC NULLS FIRST");
+    XCTAssertNil(err);
+}
+
+-(void)testFilterScope {
+    NSError *err = nil;
+    SelectQuery *res = [p parse:@"select id from contact Using  Scope delegated" error:&err];
+    XCTAssertEqualObjects([res toSoql], @"SELECT id FROM contact USING SCOPE delegated");
+    XCTAssertNil(err);
+}
+
 @end
