@@ -48,10 +48,12 @@ ParserResult * pickVals(ParserResult*r) {
     ZKParserFactory *f = [ZKParserFactory new];
     f.defaultCaseSensitivity = CaseInsensitive;
 
-    NSSet<NSString*>* keywords = [NSSet setWithArray:@[@"from",@"where",@"order",@"by",@"having",@"limit",@"offset",@"group by",@"using",@"scope",@"asc",@"desc",@"nulls"]];
+    // USING is not in the doc, but appears to not be allowed
+    // ORDER & OFFSET are issues for our parser, but not the sfdc one.
+    NSSet<NSString*>* keywords = [NSSet setWithArray:[@"ORDER OFFSET USING   AND ASC DESC EXCLUDES FIRST FROM GROUP HAVING IN INCLUDES LAST LIKE LIMIT NOT NULL NULLS OR SELECT WHERE WITH" componentsSeparatedByCharactersInSet:[NSCharacterSet whitespaceCharacterSet]]];
     BOOL(^ignoreKeywords)(NSObject*) = ^BOOL(NSObject *v) {
         NSString *s = (NSString *)v;
-        return [keywords containsObject:[s lowercaseString]];
+        return [keywords containsObject:[s uppercaseString]];
     };
     ZKParser* ws = [f whitespace];
     ZKParser* maybeWs = [f maybeWhitespace];
