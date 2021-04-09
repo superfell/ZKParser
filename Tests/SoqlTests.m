@@ -8,6 +8,7 @@
 
 #import <XCTest/XCTest.h>
 
+#import "SoqlParser.h"
 #import "Soql.h"
 
 @interface SoqlTests : XCTestCase

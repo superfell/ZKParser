@@ -18,6 +18,9 @@
 		F438E488261F77A70010D90E /* Soql.m in Sources */ = {isa = PBXBuildFile; fileRef = F438E486261F77A70010D90E /* Soql.m */; };
 		F438E489261F77A70010D90E /* Soql.m in Sources */ = {isa = PBXBuildFile; fileRef = F438E486261F77A70010D90E /* Soql.m */; };
 		F438E48E261F7C960010D90E /* SoqlTests.m in Sources */ = {isa = PBXBuildFile; fileRef = F438E48C261F7C960010D90E /* SoqlTests.m */; };
+		F438E49C2620C3F30010D90E /* SoqlParser.h in Headers */ = {isa = PBXBuildFile; fileRef = F438E49A2620C3F30010D90E /* SoqlParser.h */; };
+		F438E49D2620C3F30010D90E /* SoqlParser.m in Sources */ = {isa = PBXBuildFile; fileRef = F438E49B2620C3F30010D90E /* SoqlParser.m */; };
+		F438E49E2620C3F30010D90E /* SoqlParser.m in Sources */ = {isa = PBXBuildFile; fileRef = F438E49B2620C3F30010D90E /* SoqlParser.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -42,6 +45,8 @@
 		F438E485261F77A70010D90E /* Soql.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Soql.h; sourceTree = "<group>"; };
 		F438E486261F77A70010D90E /* Soql.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = Soql.m; sourceTree = "<group>"; };
 		F438E48C261F7C960010D90E /* SoqlTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SoqlTests.m; sourceTree = "<group>"; };
+		F438E49A2620C3F30010D90E /* SoqlParser.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SoqlParser.h; sourceTree = "<group>"; };
+		F438E49B2620C3F30010D90E /* SoqlParser.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SoqlParser.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -90,6 +95,8 @@
 				F438E47F261E276E0010D90E /* ZKParserInput.m */,
 				F438E485261F77A70010D90E /* Soql.h */,
 				F438E486261F77A70010D90E /* Soql.m */,
+				F438E49A2620C3F30010D90E /* SoqlParser.h */,
+				F438E49B2620C3F30010D90E /* SoqlParser.m */,
 			);
 			path = ZKParser;
 			sourceTree = "<group>";
@@ -113,6 +120,7 @@
 			files = (
 				F438E487261F77A70010D90E /* Soql.h in Headers */,
 				F412B66A2543D14D00B36A77 /* ZKParser.h in Headers */,
+				F438E49C2620C3F30010D90E /* SoqlParser.h in Headers */,
 				F438E480261E276E0010D90E /* ZKParserInput.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -209,6 +217,7 @@
 				F438E481261E276E0010D90E /* ZKParserInput.m in Sources */,
 				F438E488261F77A70010D90E /* Soql.m in Sources */,
 				F412B66C2543D14D00B36A77 /* ZKParser.m in Sources */,
+				F438E49D2620C3F30010D90E /* SoqlParser.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -217,6 +226,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F438E48E261F7C960010D90E /* SoqlTests.m in Sources */,
+				F438E49E2620C3F30010D90E /* SoqlParser.m in Sources */,
 				F438E482261E276E0010D90E /* ZKParserInput.m in Sources */,
 				F438E489261F77A70010D90E /* Soql.m in Sources */,
 				F412B67E2543DE0900B36A77 /* Tests.m in Sources */,

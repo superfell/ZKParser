@@ -8,11 +8,7 @@
 
 #import <Foundation/Foundation.h>
 
-@class SelectQuery;
-
-@interface SoqlParser : NSObject
--(SelectQuery*)parse:(NSString *)input error:(NSError**)err;
-@end
+@class ParserResult;
 
 @interface AstNode : NSObject
 @property (assign,nonatomic) NSRange loc;
@@ -20,20 +16,27 @@
 @end
 
 @interface PositionedString : AstNode
++(instancetype)string:(NSString *)s loc:(NSRange)loc;
++(instancetype)from:(ParserResult*)r;
++(NSArray<PositionedString*>*)fromArray:(NSArray<ParserResult*>*)r;
+
 @property (strong,nonatomic) NSString *val;
 @end
 
 @interface SelectField : AstNode
++(instancetype)name:(NSArray<PositionedString*>*)n loc:(NSRange)loc;
 @property (strong,nonatomic) NSArray<PositionedString*> *name;
 @property (strong,nonatomic) PositionedString *alias; // ?
 @end
 
 @interface SelectFunc : AstNode
++(instancetype) name:(PositionedString*)n args:(NSArray<SelectField*>*)args;
 @property (strong, nonatomic) PositionedString *name;
 @property (strong, nonatomic) NSArray<SelectField*> *args;
 @end
 
 @interface SObjectRef : AstNode
++(instancetype) name:(PositionedString *)n alias:(PositionedString *)a loc:(NSRange)loc;
 @property (strong,nonatomic) PositionedString *name;
 @property (strong,nonatomic) PositionedString *alias;
 @end
@@ -48,6 +51,7 @@ static const NSInteger NullsFirst = 2;
 static const NSInteger NullsLast = 3;
 
 @interface OrderBy : AstNode
++(instancetype) field:(SelectField*)f asc:(BOOL)asc nulls:(NSInteger)n loc:(NSRange)loc;
 @property (strong, nonatomic) SelectField* field;
 @property (assign, nonatomic) BOOL asc;
 @property (assign, nonatomic) NSInteger nulls;
