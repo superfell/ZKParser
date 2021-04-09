@@ -20,6 +20,12 @@ void append(NSMutableString *q, NSArray *a) {
     }
 };
 
+@implementation AstNode
+-(NSString*)toSoql {
+    return [NSString stringWithFormat:@"[TODO on %@]", self.className];
+}
+@end
+
 @implementation PositionedString
 +(instancetype)string:(NSString *)s loc:(NSRange)loc {
     PositionedString *r = [PositionedString new];
