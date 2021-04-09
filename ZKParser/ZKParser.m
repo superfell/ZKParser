@@ -103,15 +103,27 @@
 @property (strong, nonatomic) MapperBlock block;
 @end
 
+@interface ZKParserBlock : ZKParser
+@property (copy,nonatomic) ParseBlock parser;
+@property (strong, nonatomic) MapperBlock mapper;
+@end
+
 
 @implementation ZKParser
+-(ParserResult *)parseImpl:(ZKParserInput*)input error:(NSError **)err {
+    assert(false);
+}
+
 -(ParserResult *)parse:(ZKParserInput*)input error:(NSError **)err {
-    *err = [NSError errorWithDomain:@"Parser"
-                               code:5
-                           userInfo:@{
-                               NSLocalizedDescriptionKey:@"parse method should of be implemented by class",
-                           }];
-    return nil;
+    if (self.debugName != nil) {
+        NSLog(@"=> parse %@\t\tinput: %@", self.debugName, input.value);
+    }
+    *err = nil;
+    ParserResult *r = [self parseImpl:input error:err];
+    if (self.debugName != nil) {
+        NSLog(@"<= parse %@ :%@", self.debugName, [*err localizedDescription]);
+    }
+    return r;
 }
 
 -(ZKParserOneOf*)or:(NSArray<ZKParser*>*)otherParsers {
@@ -138,14 +150,14 @@
 
 @implementation ZKParserRef
 
--(ParserResult *)parse:(ZKParserInput*)input error:(NSError **)err {
+-(ParserResult *)parseImpl:(ZKParserInput*)input error:(NSError **)err {
     return [self.parser parse:input error:err];
 }
 
 @end
 
 @implementation ZKParserMapper
--(ParserResult *)parse:(ZKParserInput*)input error:(NSError **)err {
+-(ParserResult *)parseImpl:(ZKParserInput*)input error:(NSError **)err {
     ParserResult *res = [self.inner parse:input error:err];
     if (*err == nil) {
         return self.block(res);
@@ -155,7 +167,7 @@
 @end
 
 @implementation ZKParserExact
--(ParserResult *)parse:(ZKParserInput*)input error:(NSError **)err {
+-(ParserResult *)parseImpl:(ZKParserInput*)input error:(NSError **)err {
     NSInteger start = input.pos;
     NSString *res = [input consumeString:self.match caseSensitive:self.caseSensitivity];
     if (res != nil) {
@@ -179,7 +191,7 @@
 @end
 
 @implementation ZKParserCharSet
--(ParserResult *)parse:(ZKParserInput*)input error:(NSError **)err {
+-(ParserResult *)parseImpl:(ZKParserInput*)input error:(NSError **)err {
     NSInteger count = 0;
     NSInteger start = input.pos;
     while (true) {
@@ -218,7 +230,7 @@
 
 @implementation ZKParserOneOf
 
--(ParserResult *)parse:(ZKParserInput*)input error:(NSError **)err {
+-(ParserResult *)parseImpl:(ZKParserInput*)input error:(NSError **)err {
     ParserResult *res = [self parseInput:input error:err];
     if (*err == nil && self.matchBlock != nil) {
         return self.matchBlock(res);
@@ -266,7 +278,7 @@
 @end
 
 @implementation ZKParserSeq
--(ParserResult *)parse:(ZKParserInput*)input error:(NSError **)err {
+-(ParserResult *)parseImpl:(ZKParserInput*)input error:(NSError **)err {
     NSUInteger start = input.pos;
     NSMutableArray *out = [NSMutableArray arrayWithCapacity:self.items.count];
     for (ZKParser *child in self.items) {
@@ -322,7 +334,7 @@
     return self;
 }
 
--(ParserResult *)parse:(ZKParserInput*)input error:(NSError **)err {
+-(ParserResult *)parseImpl:(ZKParserInput*)input error:(NSError **)err {
     NSUInteger start = input.pos;
     NSMutableArray<ParserResult*> *out = [NSMutableArray array];
     NSError *nextError = nil;
@@ -362,7 +374,7 @@
 
 @implementation ZKParserOptional
 
--(ParserResult *)parse:(ZKParserInput*)input error:(NSError **)err {
+-(ParserResult *)parseImpl:(ZKParserInput*)input error:(NSError **)err {
     NSUInteger start = input.pos;
     ParserResult *res = [self.optional parse:input error:err];
     if (*err == nil) {
@@ -381,6 +393,23 @@
 
 @end
 
+@implementation ZKParserBlock
++(instancetype)block:(ParseBlock)b mapper:(MapperBlock)m {
+    ZKParserBlock *p = [ZKParserBlock new];
+    p.parser = b;
+    p.mapper = m;
+    return p;
+}
+
+-(ParserResult*)parseImpl:(ZKParserInput*)i error:(NSError**)err {
+    ParserResult *res = self.parser(i,err);
+    if (*err == nil && self.mapper != nil) {
+        res = self.mapper(res);
+    }
+    return res;
+}
+@end
+
 @implementation ZKParserFactory
 
 -(ZKParser*)map:(ZKParser*)p onMatch:(MapperBlock)block {
@@ -396,6 +425,7 @@
     e.caseSensitivity = c;
     e.onMatch = block;
     e.returnValue = YES;
+    e.debugName = [NSString stringWithFormat:@"eq:%@", s];
     return e;
 }
 
@@ -422,6 +452,7 @@
     e.match = s;
     e.caseSensitivity = self.defaultCaseSensitivity;
     e.returnValue = NO;
+    e.debugName = [NSString stringWithFormat:@"skip: %@", s];
     return e;
 }
 
@@ -431,6 +462,7 @@
     w.minMatches = 1;
     w.errorName = @"whitespace";
     w.returnValue = NO;
+    w.debugName = w.errorName;
     return w;
 }
 
@@ -440,6 +472,7 @@
     w.minMatches = 0;
     w.errorName = @"whitespace";
     w.returnValue = NO;
+    w.debugName = w.errorName;
     return w;
 }
 
@@ -525,6 +558,14 @@
 
 -(ZKParserRepeat*)oneOrMore:(ZKParser*)p separator:(ZKParser*)sep max:(NSUInteger)maxItems {
     return [ZKParserRepeat repeated:p sep:sep min:1 max:maxItems];
+}
+
+-(ZKParser*)fromBlock:(ParseBlock)parser {
+    return [ZKParserBlock block:parser mapper:nil];
+}
+
+-(ZKParser*)fromBlock:(ParseBlock)parser mapper:(MapperBlock)m {
+    return [ZKParserBlock block:parser mapper:m];
 }
 
 @end

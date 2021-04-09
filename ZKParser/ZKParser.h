@@ -41,6 +41,8 @@ typedef ParserResult *(^ArrayMapperBlock)(ArrayParserResult *r);
 -(ZKParserSeq*)then:(NSArray<ZKParser*>*)otherParsers;
 -(ZKParserSeq*)thenZeroOrMore:(ZKParser*)parser;
 -(ZKParserSeq*)thenOneOrMore:(ZKParser*)parser;
+
+@property (strong,nonatomic) NSString *debugName;
 @end
 
 @interface ZKParserOneOf : ZKParser
@@ -61,6 +63,8 @@ typedef ParserResult *(^ArrayMapperBlock)(ArrayParserResult *r);
 @interface ZKParserRef : ZKParser
 @property (strong,nonatomic) ZKParser *parser;
 @end
+
+typedef ParserResult *(^ParseBlock)(ZKParserInput*input,NSError **err);
 
 @interface ZKParserFactory : NSObject
 
@@ -97,6 +101,10 @@ typedef ParserResult *(^ArrayMapperBlock)(ArrayParserResult *r);
 
 -(ZKParser*)zeroOrOne:(ZKParser*)p;
 -(ZKParser*)zeroOrOne:(ZKParser*)p ignoring:(BOOL(^)(NSObject*))ignoreBlock;
+
+// Constructs a new Parser instance from the supplied block
+-(ZKParser*)fromBlock:(ParseBlock)parser;
+-(ZKParser*)fromBlock:(ParseBlock)parser mapper:(MapperBlock)m;
 
 -(ZKParser*)map:(ZKParser*)p onMatch:(MapperBlock)block;
 

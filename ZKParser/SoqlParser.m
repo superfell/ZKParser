@@ -71,11 +71,11 @@ ParserResult * pickVals(ParserResult*r) {
     ZKParser* ident = [f characters:[NSCharacterSet characterSetWithCharactersInString:@"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_"]
                                name:@"identifier"
                                 min:1];
-
+    ident.debugName = @"ident";
+    
     // SELECT LIST
     ZKParser *alias = [f zeroOrOne:[f seq:@[ws, ident] onMatch:pick(1)] ignoring:ignoreKeywords];
     ZKParser* field = [f seq:@[[f oneOrMore:ident separator:[f eq:@"."]], alias] onMatch:^ParserResult *(ArrayParserResult *m) {
-        
         m.val = [SelectField name:[PositionedString fromArray:[m.child[0] valueForKey:@"val"]]
                             alias:([m childIsNull:1] ? nil : [m.child[1] posString])
                               loc:m.loc];
@@ -142,23 +142,64 @@ ParserResult * pickVals(ParserResult*r) {
         return r;
     }];
     ZKParser *baseExpr = [f seq:@[field, maybeWs, operator, maybeWs, literalValue] onMatch:^ParserResult *(ArrayParserResult *r) {
-        Expr *e = [Expr leftF:r.child[0].val op:[r.child[2] posString] right:r.child[4].val loc:r.loc];
+        Expr *e = [Expr leftF:r.child[0].val op:[r.child[2] posString] rightV:r.child[4].val loc:r.loc];
         r.val = e;
         return r;
     }];
+    baseExpr.debugName = @"baseExpr";
 
     ZKParser *andOr = [f oneOfFromString:@"AND OR"];
-    ZKParser *exprs = [f seq:@[baseExpr, [f zeroOrMore:[f seq:@[ws, andOr, ws, baseExpr]]]] onMatch:^ParserResult *(ArrayParserResult *r) {
+    ZKParser *baseExprList = [f seq:@[baseExpr, [f zeroOrMore:[f seq:@[ws, andOr, ws, baseExpr]]]] onMatch:^ParserResult *(ArrayParserResult *r) {
         Expr *e = r.child[0].val;
         for (ArrayParserResult *next in r.child[1].val) {
             PositionedString *op = [next.child[1] posString];
             LiteralValue *v = next.child[3].val;
-            e = [Expr leftE:e op:op right:v loc:next.loc];
+            e = [Expr leftE:e op:op rightV:v loc:next.loc];
         }
         r.val = e;
         return r;
     }];
-    ZKParser *where = [f zeroOrOne:[f seq:@[ws,[f eq:@"WHERE"], ws, exprs] onMatch:pick(3)]];
+    baseExprList.debugName = @"innerBaseExprList";
+    ZKParser *parenticalBaseExprList = [f seq:@[[f eq:@"("], baseExprList, [f eq:@")"]] onMatch:pick(1)];
+    parenticalBaseExprList.debugName = @"parenticalBaseExprList";
+    baseExprList = [f oneOf:@[baseExprList, parenticalBaseExprList]];
+    baseExprList.debugName = @"baseExprList";
+    
+    ZKParser *andOr1 = [f seq:@[baseExpr, [f zeroOrMore:[f seq:@[ws, andOr, ws, baseExprList]]]] onMatch:^ParserResult *(ArrayParserResult *r) {
+        Expr *e = r.child[0].val;
+        for (ArrayParserResult *next in r.child[1].val) {
+            PositionedString *op = [next.child[1] posString];
+            Expr *right = next.child[3].val;
+            e = [Expr leftE:e op:op rightE:right loc:next.loc];
+        }
+        r.val = e;
+        return r;
+    }];
+    ZKParser *andOr2 = [f seq:@[baseExprList, [f zeroOrMore:[f seq:@[ws, andOr, ws, baseExprList]]]] onMatch:^ParserResult *(ArrayParserResult *r) {
+        Expr *e = r.child[0].val;
+        for (ArrayParserResult *next in r.child[1].val) {
+            PositionedString *op = [next.child[1] posString];
+            Expr *right = next.child[3].val;
+            e = [Expr leftE:e op:op rightE:right loc:next.loc];
+        }
+        r.val = e;
+        return r;
+    }];
+    ZKParser *andOr3 = [f seq:@[baseExprList, [f zeroOrMore:[f seq:@[ws, andOr, ws, baseExpr]]]] onMatch:^ParserResult *(ArrayParserResult *r) {
+        Expr *e = r.child[0].val;
+        for (ArrayParserResult *next in r.child[1].val) {
+            PositionedString *op = [next.child[1] posString];
+            Expr *right = next.child[3].val;
+            e = [Expr leftE:e op:op rightE:right loc:next.loc];
+        }
+        r.val = e;
+        return r;
+    }];
+
+    ZKParser *rootExprList = [f oneOf:@[andOr1, andOr2, andOr3]];
+    
+    ZKParser *where = [f zeroOrOne:[f seq:@[ws,[f eq:@"WHERE"], ws, rootExprList] onMatch:pick(3)]];
+    where.debugName = @"Where";
     
     /// FILTER SCOPE
     ZKParser *filterScope = [f zeroOrOne:[[ws then:@[[f eq:@"USING"], ws, [f eq:@"SCOPE"], ws, ident]] onMatch:pick(5)]];

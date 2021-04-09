@@ -55,12 +55,15 @@
 @end
 
 @interface Expr : AstNode
-+(instancetype) leftF:(SelectField*)l op:(PositionedString*)op right:(LiteralValue*)right loc:(NSRange)loc;
-+(instancetype) leftE:(Expr*)l op:(PositionedString*)op right:(LiteralValue*)right loc:(NSRange)loc;
++(instancetype) leftF:(SelectField*)l op:(PositionedString*)op rightV:(LiteralValue*)right loc:(NSRange)loc;
++(instancetype) leftE:(Expr*)l op:(PositionedString*)op rightV:(LiteralValue*)right loc:(NSRange)loc;
++(instancetype) leftF:(SelectField*)l op:(PositionedString*)op rightE:(Expr*)right loc:(NSRange)loc;
++(instancetype) leftE:(Expr*)l op:(PositionedString*)op rightE:(Expr*)right loc:(NSRange)loc;
 @property (strong,nonatomic) SelectField *leftField;
 @property (strong,nonatomic) Expr *leftExpr;
 @property (assign,nonatomic) PositionedString *op;
 @property (strong,nonatomic) LiteralValue *right;
+@property (strong,nonatomic) Expr *rightExpr;
 @end
 
 static const NSInteger NullsDefault = 1;

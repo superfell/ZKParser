@@ -150,7 +150,7 @@ void append(NSMutableString *q, NSArray *a) {
 @end
 
 @implementation Expr
-+(instancetype) leftF:(SelectField*)l op:(PositionedString*)op right:(LiteralValue*)right loc:(NSRange)loc {
++(instancetype) leftF:(SelectField*)l op:(PositionedString*)op rightV:(LiteralValue*)right loc:(NSRange)loc {
     Expr *e= [self new];
     e.leftField = l;
     e.op = op;
@@ -159,7 +159,7 @@ void append(NSMutableString *q, NSArray *a) {
     return e;
 }
 
-+(instancetype) leftE:(Expr*)l op:(PositionedString*)op right:(LiteralValue*)right loc:(NSRange)loc {
++(instancetype) leftE:(Expr*)l op:(PositionedString*)op rightV:(LiteralValue*)right loc:(NSRange)loc {
     Expr *e= [self new];
     e.leftExpr = l;
     e.op = op;
@@ -168,6 +168,25 @@ void append(NSMutableString *q, NSArray *a) {
     e.loc = loc;
     return e;
 }
++(instancetype) leftF:(SelectField*)l op:(PositionedString*)op rightE:(Expr*)right loc:(NSRange)loc {
+    Expr *e= [self new];
+    e.leftField = l;
+    e.op = op;
+    e.op.val = [op.val uppercaseString];
+    e.rightExpr = right;
+    e.loc = loc;
+    return e;
+}
++(instancetype) leftE:(Expr*)l op:(PositionedString*)op rightE:(Expr*)right loc:(NSRange)loc {
+    Expr *e= [self new];
+    e.leftExpr = l;
+    e.op = op;
+    e.op.val = [op.val uppercaseString];
+    e.rightExpr = right;
+    e.loc = loc;
+    return e;
+}
+
 -(void)appendSoql:(NSMutableString *)dest {
     if (self.leftField != nil) {
         [dest appendString:@" "];
