@@ -21,18 +21,20 @@
 +(NSArray<PositionedString*>*)fromArray:(NSArray<ParserResult*>*)r;
 
 @property (strong,nonatomic) NSString *val;
+@property (readonly) NSInteger length;
 @end
 
 @interface SelectField : AstNode
-+(instancetype)name:(NSArray<PositionedString*>*)n loc:(NSRange)loc;
++(instancetype)name:(NSArray<PositionedString*>*)n alias:(PositionedString*)alias loc:(NSRange)loc;
 @property (strong,nonatomic) NSArray<PositionedString*> *name;
-@property (strong,nonatomic) PositionedString *alias; // ?
+@property (strong,nonatomic) PositionedString *alias;
 @end
 
 @interface SelectFunc : AstNode
-+(instancetype) name:(PositionedString*)n args:(NSArray<SelectField*>*)args;
++(instancetype) name:(PositionedString*)n args:(NSArray<SelectField*>*)args alias:(PositionedString*)alias loc:(NSRange)loc;
 @property (strong, nonatomic) PositionedString *name;
 @property (strong, nonatomic) NSArray<SelectField*> *args;
+@property (strong,nonatomic) PositionedString *alias;
 @end
 
 @interface SObjectRef : AstNode
@@ -42,6 +44,7 @@
 @end
 
 @interface From : AstNode
++(instancetype) sobject:(SObjectRef*)o related:(NSArray<SelectField*>*)r loc:(NSRange)loc;
 @property (strong,nonatomic) SObjectRef *sobject;
 @property (strong,nonatomic) NSArray<SelectField*>* relatedObjects;
 @end
@@ -58,12 +61,13 @@ static const NSInteger NullsLast = 3;
 @end
 
 @interface OrderBys : AstNode
++(instancetype) by:(NSArray<OrderBy*>*)items loc:(NSRange)loc;
 @property (strong,nonatomic) NSArray<OrderBy*> *items;
 @end
 
 @interface SelectQuery : AstNode
 @property (strong,nonatomic) NSArray *selectExprs;
-@property (strong,nonatomic) SObjectRef *from;
+@property (strong,nonatomic) From *from;
 @property (strong,nonatomic) PositionedString *filterScope;
 @property (strong,nonatomic) OrderBys *orderBy;
 @property (assign,nonatomic) NSInteger limit;

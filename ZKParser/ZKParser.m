@@ -25,6 +25,11 @@
 -(BOOL)isEqual:(ParserResult*)other {
     return [self.val isEqual:other.val] && (self.loc.location == other.loc.location) && (self.loc.length == other.loc.length);
 }
+-(NSArray<ParserResult*>*)children {
+    assert([self.val isKindOfClass:[NSArray class]]);
+    return self.val;
+}
+
 -(NSString*)description {
     return [NSString stringWithFormat:@"%@ {%lu,%lu}", self.val, self.loc.location, self.loc.length];
 }

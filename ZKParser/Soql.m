@@ -48,26 +48,41 @@ void append(NSMutableString *q, NSArray *a) {
 -(NSString*)toSoql {
     return self.val;
 }
+-(NSInteger)length {
+    return self.val.length;
+}
 @end
 
 
 @implementation SelectField
 +(instancetype)name:(NSArray<PositionedString*>*)n loc:(NSRange)loc {
+    return [self name:n alias:nil loc:loc];
+}
++(instancetype)name:(NSArray<PositionedString*>*)n alias:(PositionedString*)alias loc:(NSRange)loc {
     SelectField *f = [SelectField new];
     f.name = n;
+    f.alias = alias;
     f.loc = loc;
     return f;
 }
 -(NSString *)toSoql {
-    return [[self.name valueForKey:@"toSoql"] componentsJoinedByString:@"."];
+    NSMutableString *f = [NSMutableString stringWithCapacity:32];
+    [f appendString:[[self.name valueForKey:@"toSoql"] componentsJoinedByString:@"."]];
+    if (self.alias.length > 0) {
+        [f appendString:@" "];
+        [f appendString:self.alias.val];
+    }
+    return f;
 }
 @end
 
 @implementation SelectFunc
-+(instancetype) name:(PositionedString*)n args:(NSArray<SelectField*>*)args {
++(instancetype) name:(PositionedString*)n args:(NSArray<SelectField*>*)args alias:(PositionedString*)alias loc:(NSRange)loc {
     SelectFunc *f = [SelectFunc new];
     f.name = n;
     f.args = args;
+    f.alias = alias;
+    f.loc = loc;
     return f;
 }
 -(NSString *)toSoql {
@@ -76,6 +91,10 @@ void append(NSMutableString *q, NSArray *a) {
     [s appendString:@"("];
     append(s, self.args);
     [s appendString:@")"];
+    if (self.alias.length > 0) {
+        [s appendString:@" "];
+        [s appendString:self.alias.val];
+    }
     return s;
 }
 @end
@@ -97,8 +116,27 @@ void append(NSMutableString *q, NSArray *a) {
 }
 @end
 
+@implementation From
++(instancetype) sobject:(SObjectRef*)o related:(NSArray<SelectField*>*)r loc:(NSRange)loc {
+    From *f = [From new];
+    f.sobject = o;
+    f.relatedObjects = r;
+    f.loc = loc;
+    return f;
+}
+-(NSString *)toSoql {
+    NSMutableString* q = [NSMutableString stringWithCapacity:32];
+    [q appendFormat:@"FROM %@", self.sobject.toSoql];
+    if (self.relatedObjects.count > 0) {
+        [q appendString:@","];
+        append(q, self.relatedObjects);
+    }
+    return q;
+}
+
+@end
 @implementation OrderBys
-+(instancetype) items:(NSArray<OrderBy*>*)items loc:(NSRange)loc {
++(instancetype) by:(NSArray<OrderBy*>*)items loc:(NSRange)loc {
     OrderBys *r = [OrderBys new];
     r.items = items;
     r.loc = loc;
@@ -148,7 +186,7 @@ void append(NSMutableString *q, NSArray *a) {
     [q appendString:@"SELECT "];
 
     append(q, self.selectExprs);
-    [q appendFormat:@" FROM %@", self.from.toSoql];
+    [q appendFormat:@" %@", self.from.toSoql];
     if (self.filterScope.val.length > 0) {
         [q appendFormat:@" USING SCOPE %@", self.filterScope.val];
     }

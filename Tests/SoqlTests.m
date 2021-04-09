@@ -42,6 +42,17 @@ SoqlParser *p = nil;
     XCTAssertNil(err);
 }
 
+-(void)testFrom {
+    NSError *err = nil;
+    SelectQuery *res = [p parse:@"select count(id) from contacts c, c.account a" error:&err];
+    XCTAssertEqualObjects([res toSoql], @"SELECT count(id) FROM contacts c,c.account a");
+    XCTAssertNil(err);
+
+    res = [p parse:@"select count(id) x from contacts, c.account a" error:&err];
+    XCTAssertEqualObjects([res toSoql], @"SELECT count(id) x FROM contacts,c.account a");
+    XCTAssertNil(err);
+}
+
 -(void)testOrderBy {
     NSError *err = nil;
     SelectQuery *res = [p parse:@"select id from contact order by name desc, city asc nulls last" error:&err];

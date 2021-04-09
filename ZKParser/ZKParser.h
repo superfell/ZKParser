@@ -18,6 +18,8 @@
 
 @property (strong,nonatomic) id val;
 @property (assign,nonatomic) NSRange loc;
+-(NSArray<ParserResult*>*)children;
+
 @end
 
 typedef ParserResult *(^MapperBlock)(ParserResult *r);
