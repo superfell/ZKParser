@@ -9,21 +9,31 @@
 #import "Soql.h"
 #import "ZKParser.h"
 
-void append(NSMutableString *q, NSArray *a) {
+void append_sep(NSMutableString *q, NSArray *a, NSString *sep) {
     BOOL first = YES;
     for (id item in a) {
         if (!first) {
-            [q appendString:@","];
+            [q appendString:sep];
         }
-        [q appendString:[item toSoql]];
+        [item appendSoql:q];
         first = NO;
     }
 };
 
+void append(NSMutableString *q, NSArray *a) {
+    append_sep(q,a,@",");
+}
+
 @implementation AstNode
 -(NSString*)toSoql {
-    return [NSString stringWithFormat:@"[TODO on %@]", self.className];
+    NSMutableString *s = [NSMutableString stringWithCapacity:256];
+    [self appendSoql:s];
+    return s;
 }
+-(void)appendSoql:(NSMutableString*)dest {
+    [dest appendFormat:@"[TODO on %@]", self.className];
+}
+
 @end
 
 @implementation PositionedString
@@ -45,8 +55,8 @@ void append(NSMutableString *q, NSArray *a) {
     return out;
 }
 
--(NSString*)toSoql {
-    return self.val;
+-(void)appendSoql:(NSMutableString*)dest {
+    [dest appendString:self.val];
 }
 -(NSInteger)length {
     return self.val.length;
@@ -65,14 +75,12 @@ void append(NSMutableString *q, NSArray *a) {
     f.loc = loc;
     return f;
 }
--(NSString *)toSoql {
-    NSMutableString *f = [NSMutableString stringWithCapacity:32];
-    [f appendString:[[self.name valueForKey:@"toSoql"] componentsJoinedByString:@"."]];
+-(void)appendSoql:(NSMutableString*)dest {
+    append_sep(dest, self.name, @".");
     if (self.alias.length > 0) {
-        [f appendString:@" "];
-        [f appendString:self.alias.val];
+        [dest appendString:@" "];
+        [self.alias appendSoql:dest];
     }
-    return f;
 }
 @end
 
@@ -85,17 +93,15 @@ void append(NSMutableString *q, NSArray *a) {
     f.loc = loc;
     return f;
 }
--(NSString *)toSoql {
-    NSMutableString *s = [NSMutableString stringWithCapacity:32];
-    [s appendString:self.name.toSoql];
-    [s appendString:@"("];
-    append(s, self.args);
-    [s appendString:@")"];
+-(void)appendSoql:(NSMutableString*)dest {
+    [self.name appendSoql:dest];
+    [dest appendString:@"("];
+    append(dest, self.args);
+    [dest appendString:@")"];
     if (self.alias.length > 0) {
-        [s appendString:@" "];
-        [s appendString:self.alias.val];
+        [dest appendString:@" "];
+        [self.alias appendSoql:dest];
     }
-    return s;
 }
 @end
 
@@ -108,11 +114,12 @@ void append(NSMutableString *q, NSArray *a) {
     r.loc = loc;
     return r;
 }
--(NSString *)toSoql {
-    if (self.alias.val.length == 0) {
-        return self.name.toSoql;
+-(void)appendSoql:(NSMutableString*)dest {
+    [self.name appendSoql:dest];
+    if (self.alias.length > 0) {
+        [dest appendString:@" "];
+        [self.alias appendSoql:dest];
     }
-    return [NSString stringWithFormat:@"%@ %@", self.name.toSoql, self.alias.toSoql];
 }
 @end
 
@@ -124,14 +131,13 @@ void append(NSMutableString *q, NSArray *a) {
     f.loc = loc;
     return f;
 }
--(NSString *)toSoql {
-    NSMutableString* q = [NSMutableString stringWithCapacity:32];
-    [q appendFormat:@"FROM %@", self.sobject.toSoql];
+-(void)appendSoql:(NSMutableString*)dest {
+    [dest appendString:@" FROM "];
+    [self.sobject appendSoql:dest];
     if (self.relatedObjects.count > 0) {
-        [q appendString:@","];
-        append(q, self.relatedObjects);
+        [dest appendString:@","];
+        append(dest, self.relatedObjects);
     }
-    return q;
 }
 
 @end
@@ -142,14 +148,12 @@ void append(NSMutableString *q, NSArray *a) {
     r.loc = loc;
     return r;
 }
--(NSString*)toSoql {
+-(void)appendSoql:(NSMutableString*)dest {
     if (self.items.count == 0) {
-        return @"";
+        return;
     }
-    NSMutableString *q = [NSMutableString stringWithCapacity:64];
-    [q appendString:@" ORDER BY "];
-    append(q, self.items);
-    return q;
+    [dest appendString:@" ORDER BY "];
+    append(dest, self.items);
 }
 
 @end
@@ -163,14 +167,14 @@ void append(NSMutableString *q, NSArray *a) {
     g.loc = loc;
     return g;
 }
--(NSString *)toSoql {
-    NSString *nulls = @"";
+-(void)appendSoql:(NSMutableString*)dest {
+    [self.field appendSoql:dest];
+    [dest appendString:self.asc ? @" ASC": @" DESC"];
     if (self.nulls == NullsLast) {
-        nulls = @" NULLS LAST";
+        [dest appendString:@" NULLS LAST"];
     } else if (self.nulls == NullsFirst) {
-        nulls = @" NULLS FIRST";
+        [dest appendString:@" NULLS FIRST"];
     }
-    return [NSString stringWithFormat:@"%@ %@%@", self.field.toSoql, self.asc ? @"ASC" : @"DESC", nulls];
 }
 @end
 
@@ -181,23 +185,21 @@ void append(NSMutableString *q, NSArray *a) {
     return self;
 }
 
--(NSString *)toSoql {
-    NSMutableString *q = [NSMutableString stringWithCapacity:256];
-    [q appendString:@"SELECT "];
+-(void)appendSoql:(NSMutableString*)dest {
+    [dest appendString:@"SELECT "];
 
-    append(q, self.selectExprs);
-    [q appendFormat:@" %@", self.from.toSoql];
+    append(dest, self.selectExprs);
+    [self.from appendSoql:dest];
     if (self.filterScope.val.length > 0) {
-        [q appendFormat:@" USING SCOPE %@", self.filterScope.val];
+        [dest appendFormat:@" USING SCOPE %@", self.filterScope.val];
     }
-    [q appendString:self.orderBy.toSoql];
+    [self.orderBy appendSoql:dest];
     if (self.limit < NSIntegerMax) {
-        [q appendFormat:@" LIMIT %lu", self.limit];
+        [dest appendFormat:@" LIMIT %lu", self.limit];
     }
     if (self.offset > 0) {
-        [q appendFormat:@" OFFSET %lu", self.offset];
+        [dest appendFormat:@" OFFSET %lu", self.offset];
     }
-    return q;
 }
 @end
 

@@ -13,6 +13,7 @@
 @interface AstNode : NSObject
 @property (assign,nonatomic) NSRange loc;
 -(NSString*)toSoql;
+-(void)appendSoql:(NSMutableString*)dest;
 @end
 
 @interface PositionedString : AstNode
