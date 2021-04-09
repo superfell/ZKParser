@@ -9,61 +9,124 @@
 #import "Soql.h"
 #import "ZKParser.h"
 
+void append(NSMutableString *q, NSArray *a) {
+    BOOL first = YES;
+    for (id item in a) {
+        if (!first) {
+            [q appendString:@","];
+        }
+        [q appendString:[item toSoql]];
+        first = NO;
+    }
+};
+
+@implementation PositionedString
++(instancetype)string:(NSString *)s loc:(NSRange)loc {
+    PositionedString *r = [PositionedString new];
+    r.val = s;
+    r.loc = loc;
+    return r;
+}
++(instancetype)from:(ParserResult*)r {
+    assert([r.val isKindOfClass:[NSString class]]);
+    return [self string:(NSString*)r.val loc:r.loc];
+}
++(NSArray<PositionedString*>*)fromArray:(NSArray<ParserResult*>*)r {
+    NSMutableArray<PositionedString*> *out = [NSMutableArray arrayWithCapacity:r.count];
+    for (ParserResult *item in r) {
+        [out addObject:[PositionedString from:item]];
+    }
+    return out;
+}
+
+-(NSString*)toSoql {
+    return self.val;
+}
+@end
+
+@implementation ParserResult (Soql)
+-(PositionedString*)posString {
+    return [PositionedString from:self];
+}
+@end
+
 @implementation SelectField
-+(instancetype)name:(NSArray<NSString*>*)n {
++(instancetype)name:(NSArray<PositionedString*>*)n loc:(NSRange)loc {
     SelectField *f = [SelectField new];
     f.name = n;
+    f.loc = loc;
     return f;
 }
--(NSString *)description {
-    return [self.name componentsJoinedByString:@"."];
+-(NSString *)toSoql {
+    return [[self.name valueForKey:@"toSoql"] componentsJoinedByString:@"."];
 }
 @end
 
 @implementation SelectFunc
-+(instancetype) name:(NSString*)n args:(NSArray*)args {
++(instancetype) name:(PositionedString*)n args:(NSArray<PositionedString*>*)args {
     SelectFunc *f = [SelectFunc new];
     f.name = n;
     f.args = args;
     return f;
 }
--(NSString *)description {
-    return [NSString stringWithFormat:@"%@(%@)", self.name, self.args];
+-(NSString *)toSoql {
+    return [NSString stringWithFormat:@"%@(%@)", self.name.toSoql, [self.args valueForKey:@"toSoql"]];
 }
 @end
 
 
 @implementation SObjectRef
-+(instancetype) name:(NSString *)n alias:(NSString *)a {
++(instancetype) name:(PositionedString *)n alias:(PositionedString *)a loc:(NSRange)loc {
     SObjectRef *r = [SObjectRef new];
     r.name = n;
     r.alias = a;
+    r.loc = loc;
     return r;
 }
--(NSString *)description {
+-(NSString *)toSoql {
     if (self.alias == nil) {
-        return self.name;
+        return self.name.toSoql;
     }
-    return [NSString stringWithFormat:@"%@ %@", self.name, self.alias];
+    return [NSString stringWithFormat:@"%@ %@", self.name.toSoql, self.alias.toSoql];
 }
 @end
 
+@implementation OrderBys
++(instancetype) items:(NSArray<OrderBy*>*)items loc:(NSRange)loc {
+    OrderBys *r = [OrderBys new];
+    r.items = items;
+    r.loc = loc;
+    return r;
+}
+-(NSString*)toSoql {
+    if (self.items.count == 0) {
+        return @"";
+    }
+    NSMutableString *q = [NSMutableString stringWithCapacity:64];
+    [q appendString:@" ORDER BY "];
+    append(q, self.items);
+    return q;
+}
+
+@end
+
 @implementation OrderBy
-+(instancetype) field:(NSArray*)f asc:(BOOL)asc nulls:(NSInteger)n {
++(instancetype) field:(SelectField*)f asc:(BOOL)asc nulls:(NSInteger)n loc:(NSRange)loc {
     OrderBy *g = [OrderBy new];
     g.field = f;
     g.asc = asc;
     g.nulls = n;
+    g.loc = loc;
     return g;
 }
--(NSString *)description {
+-(NSString *)toSoql {
     NSString *nulls = @"";
     if (self.nulls == NullsLast) {
         nulls = @" NULLS LAST";
     } else if (self.nulls == NullsFirst) {
         nulls = @" NULLS FIRST";
     }
-    return [NSString stringWithFormat:@"%@ %@%@", self.field, self.asc ? @"ASC" : @"DESC", nulls];
+    return [NSString stringWithFormat:@"%@ %@%@", self.field.toSoql, self.asc ? @"ASC" : @"DESC", nulls];
 }
 @end
 
@@ -74,25 +137,12 @@
     return self;
 }
 
--(NSString *)description {
+-(NSString *)toSoql {
     NSMutableString *q = [NSMutableString stringWithCapacity:256];
     [q appendString:@"SELECT "];
-    void(^append)(NSArray*) = ^void(NSArray *a) {
-        BOOL first = YES;
-        for (NSObject *item in a) {
-            if (!first) {
-                [q appendString:@","];
-            }
-            [q appendString:[item description]];
-            first = NO;
-        }
-    };
-    append(self.selectExprs);
-    [q appendFormat:@" FROM %@", self.from.description];
-    if (self.orderBy.count > 0) {
-        [q appendString:@" ORDER BY "];
-        append(self.orderBy);
-    }
+
+    append(q, self.selectExprs);
+    [q appendFormat:@" FROM %@%@", self.from.toSoql, self.orderBy.toSoql];
     if (self.limit < NSIntegerMax) {
         [q appendFormat:@" LIMIT %lu", self.limit];
     }
@@ -103,12 +153,16 @@
 }
 @end
 
-typedef NSObject*(^arrayBlock)(NSArray*);
 
-arrayBlock pick(NSUInteger idx) {
-    return ^NSObject *(NSArray *m) {
-        return m[idx];
+MapperBlock pick(NSUInteger idx) {
+    return ^ParserResult *(ParserResult *m) {
+        return m.val[idx];
     };
+}
+
+ParserResult * pickVals(ParserResult*r) {
+    r.val = [r.val valueForKey:@"val"];
+    return r;
 }
 
 @implementation SoqlParser
@@ -128,8 +182,9 @@ arrayBlock pick(NSUInteger idx) {
                                name:@"identifier"
                                 min:1];
 
-    ZKParser* field = [[f oneOrMore:ident separator:[f eq:@"."]] onMatch:^NSObject *(NSArray *m) {
-        return [SelectField name:m];
+    ZKParser* field = [[f oneOrMore:ident separator:[f eq:@"."]] onMatch:^ParserResult *(ParserResult *m) {
+        m.val = [SelectField name:[PositionedString fromArray:m.val] loc:m.loc];
+        return m;
     }];
     ZKParser* func = [f seq:@[ident,
                               maybeWs,
@@ -138,54 +193,74 @@ arrayBlock pick(NSUInteger idx) {
                               field,
                               maybeWs,
                               [f skip:@")"],
-                              [f zeroOrOne:[[ws then:@[ident]] onMatch:pick(1)] ignoring:ignoreKeywords]] onMatch:^NSObject*(NSArray *m) {
-        return [SelectFunc name:m[0] args:@[m[4]]];
+                              [f zeroOrOne:[[ws then:@[ident]] onMatch:pick(1)] ignoring:ignoreKeywords]
+                            ] onMatch:^ParserResult*(ParserResult*m) {
+        m.val = [SelectFunc name:[m.val[0] posString] args:@[[m.val[4] posString]]];
+        return m;
     }];
     
     ZKParser* selectExpr = [field or:@[func]];
-    ZKParser* selectExprs = [f oneOrMore:selectExpr separator:commaSep];
-    selectExprs = [selectExprs or:@[[f exactly:@"count()" case:CaseInsensitive onMatch:^NSObject *(NSString *s) {
-        return [SelectFunc name:@"count" args:@[]];
+    ZKParser* selectExprs = [[f oneOrMore:selectExpr separator:commaSep] onMatch:^ParserResult *(ParserResult *r) {
+        NSArray<ParserResult*>* c = (NSArray<ParserResult*>*)r.val;
+        NSArray *out = [c valueForKey:@"val"];
+        r.val = out;
+        return r;
+    }];
+    selectExprs = [selectExprs or:@[[f exactly:@"count()" case:CaseInsensitive onMatch:^ParserResult *(ParserResult *s) {
+        s.val = [SelectFunc name:[s posString] args:@[]];
+        return s;
     }]]];
 
-    ZKParser *objectRef = [f seq:@[ident, [f zeroOrOne:[f seq:@[ws, ident] onMatch:pick(1)] ignoring:ignoreKeywords]] onMatch:^NSObject *(NSArray *m) {
-        return [SObjectRef name:m[0] alias:m[1] == [NSNull null] ? nil : m[1]];
+    ZKParser *objectRef = [f seq:@[ident, [f zeroOrOne:[f seq:@[ws, ident] onMatch:pick(1)] ignoring:ignoreKeywords]]
+                         onMatch:^ParserResult *(ParserResult *m) {
+        NSArray<ParserResult*>* c = (NSArray<ParserResult*>*)m.val;
+        m.val = [SObjectRef name:[c[0] posString] alias:[c[1] val] == [NSNull null] ? nil : [c[1] posString] loc:m.loc];
+        return m;
     }];
     ZKParser *objectRefs = [f oneOrMore:objectRef separator:commaSep];
     
     ZKParser *filterScope = [f zeroOrOne:[[ws then:@[[f eq:@"USING"], ws, [f eq:@"SCOPE"], ws, ident]] onMatch:pick(6)]];
-    
-    ZKParser *ascDesc = [f seq:@[ws, [f oneOf:@[[f eq:@"ASC"],[f eq:@"DESC"]]]] onMatch:pick(1)];
-    ZKParser *nulls = [f seq:@[ws, [f eq:@"NULLS"], ws, [f oneOf:@[[f eq:@"FIRST"], [f eq:@"LAST"]]]]];
-    ZKParser *orderByField = [f seq:@[field, [f zeroOrOne:ascDesc], [f zeroOrOne:nulls]] onMatch:^NSObject*(NSArray*m) {
+
+    ZKParser *asc  = [f exactly:@"ASC" setValue:@YES];
+    ZKParser *desc = [f exactly:@"DESC" setValue:@NO];
+    ZKParser *ascDesc = [f seq:@[ws, [f oneOf:@[asc,desc]]] onMatch:pick(1)];
+    ZKParser *nulls = [f seq:@[ws, [f eq:@"NULLS"], ws,
+                               [f oneOf:@[[f exactly:@"FIRST" setValue:@(NullsFirst)], [f exactly:@"LAST" setValue:@(NullsLast)]]]]
+                     onMatch:pick(3)];
+    ZKParser *orderByField = [f seq:@[field, [f zeroOrOne:ascDesc], [f zeroOrOne:nulls]] onMatch:^ParserResult*(ParserResult*m) {
+        NSArray<ParserResult*>* c = (NSArray<ParserResult*>*)m.val;
         BOOL asc = YES;
         NSInteger nulls = NullsDefault;
-        if (m[1] != [NSNull null]) {
-            if ([[m[1] lowercaseString] isEqualToString:@"desc"]) {
-                asc = NO;
-            }
+        if (c[1].val != [NSNull null]) {
+            asc = [c[1].val boolValue];
         }
-        if (m[2] != [NSNull null]) {
-            NSString *n = [m[2][3] lowercaseString];
-            if ([n isEqualToString:@"first"]) {
-                nulls = NullsFirst;
-            } else if ([n isEqualToString:@"last"]) {
-                nulls = NullsLast;
-            }
+        if (c[2].val != [NSNull null]) {
+            nulls = [c[2].val integerValue];
         }
-        return [OrderBy field:m[0] asc:asc nulls:nulls];
+        m.val = [OrderBy field:(SelectField*)c[0].val asc:asc nulls:nulls loc:m.loc];
+        return m;
     }];
-    ZKParser *orderByFields = [f zeroOrOne:[f seq:@[ws,[f skip:@"ORDER"],ws,[f skip:@"BY"],ws,[f oneOrMore:orderByField separator:commaSep]] onMatch:pick(5)]];
+    ZKParser *orderByFields = [f zeroOrOne:[f seq:@[ws,[f skip:@"ORDER"],ws,[f skip:@"BY"],ws,[f oneOrMore:orderByField separator:commaSep]] onMatch:^ParserResult*(ParserResult*r) {
+        
+        NSArray<ParserResult*>* c = (NSArray<ParserResult*>*)r.val;
+        OrderBys *o = [OrderBys new];
+        o.items = [c[5].val valueForKey:@"val"];
+        o.loc = NSUnionRange(c[1].loc, c[3].loc);
+        r.val = o;
+        return r;
+    }]];
 
-    ZKParser* selectStmt = [f seq:@[[f eq:@"SELECT"], ws, selectExprs, ws, [f eq:@"FROM"], ws, objectRefs, filterScope, orderByFields] onMatch:^NSObject*(NSArray*m) {
+    ZKParser* selectStmt = [f seq:@[[f eq:@"SELECT"], ws, selectExprs, ws, [f eq:@"FROM"], ws, objectRefs, filterScope, orderByFields] onMatch:^ParserResult*(ParserResult*m) {
+        NSArray<ParserResult*>* c = (NSArray<ParserResult*>*)m.val;
         SelectQuery *q = [SelectQuery new];
-        q.selectExprs = m[2];
-        q.from = m[6][0];
-        q.orderBy = m[8];
-        return q;
+        q.selectExprs = c[2].val;
+        q.from = [c[6].val[0] val];
+        q.orderBy = c[8].val;
+        m.val= q;
+        return m;
     }];
 
-    return (SelectQuery*)[input parse:selectStmt error:err];
+    return (SelectQuery*)[input parse:selectStmt error:err].val;
 }
 
 @end

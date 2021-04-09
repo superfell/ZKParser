@@ -8,9 +8,31 @@
 
 #import <Foundation/Foundation.h>
 
+@interface PositionedString : NSObject
+@property (strong,nonatomic) NSString *val;
+@property (assign,nonatomic) NSRange loc;
+-(NSString*)toSoql;
+@end
+
+@interface SelectField : NSObject
+@property (strong,nonatomic) NSArray<PositionedString*> *name;
+@property (strong,nonatomic) PositionedString *alias; // ?
+@property (assign,nonatomic) NSRange loc;
+-(NSString*)toSoql;
+@end
+
+@interface SelectFunc : NSObject
+@property (strong, nonatomic) PositionedString *name;
+@property (strong, nonatomic) NSArray<PositionedString*> *args;
+@property (assign,nonatomic) NSRange loc;
+-(NSString*)toSoql;
+@end
+
 @interface SObjectRef : NSObject
-@property (strong,nonatomic) NSString *name;
-@property (strong,nonatomic) NSString *alias;
+@property (strong,nonatomic) PositionedString *name;
+@property (strong,nonatomic) PositionedString *alias;
+@property (assign,nonatomic) NSRange loc;
+-(NSString*)toSoql;
 @end
 
 static const NSInteger NullsDefault = 1;
@@ -18,27 +40,27 @@ static const NSInteger NullsFirst = 2;
 static const NSInteger NullsLast = 3;
 
 @interface OrderBy : NSObject
-@property (strong, nonatomic) NSArray* field;
+@property (strong, nonatomic) SelectField* field;
 @property (assign, nonatomic) BOOL asc;
 @property (assign, nonatomic) NSInteger nulls;
+@property (assign,nonatomic) NSRange loc;
+-(NSString*)toSoql;
 @end
 
-@interface SelectField : NSObject
-@property (strong,nonatomic) NSArray *name;
-@property (strong,nonatomic) NSString *alias; // ?
-@end
-
-@interface SelectFunc : NSObject
-@property (strong, nonatomic) NSString *name;
-@property (strong, nonatomic) NSArray *args;
+@interface OrderBys : NSObject
+@property (strong,nonatomic) NSArray<OrderBy*> *items;
+@property (assign,nonatomic) NSRange loc;   // location of the ORDER BY keywork
+-(NSString*)toSoql;
 @end
 
 @interface SelectQuery : NSObject
 @property (strong,nonatomic) NSArray *selectExprs;
 @property (strong,nonatomic) SObjectRef *from;
-@property (strong,nonatomic) NSArray<OrderBy*> *orderBy;
+@property (strong,nonatomic) OrderBys *orderBy;
 @property (assign,nonatomic) NSInteger limit;
 @property (assign,nonatomic) NSInteger offset;
+@property (assign,nonatomic) NSRange loc;
+-(NSString*)toSoql;
 @end
 
 @interface SoqlParser : NSObject
