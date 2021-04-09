@@ -8,6 +8,12 @@
 
 #import <Foundation/Foundation.h>
 
+@class SelectQuery;
+
+@interface SoqlParser : NSObject
+-(SelectQuery*)parse:(NSString *)input error:(NSError**)err;
+@end
+
 @interface PositionedString : NSObject
 @property (strong,nonatomic) NSString *val;
 @property (assign,nonatomic) NSRange loc;
@@ -23,7 +29,7 @@
 
 @interface SelectFunc : NSObject
 @property (strong, nonatomic) PositionedString *name;
-@property (strong, nonatomic) NSArray<PositionedString*> *args;
+@property (strong, nonatomic) NSArray<SelectField*> *args;
 @property (assign,nonatomic) NSRange loc;
 -(NSString*)toSoql;
 @end
@@ -63,7 +69,4 @@ static const NSInteger NullsLast = 3;
 -(NSString*)toSoql;
 @end
 
-@interface SoqlParser : NSObject
--(SelectQuery*)parse:(NSString *)input error:(NSError**)err;
-@end
 

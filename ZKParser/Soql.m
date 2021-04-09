@@ -63,14 +63,19 @@ void append(NSMutableString *q, NSArray *a) {
 @end
 
 @implementation SelectFunc
-+(instancetype) name:(PositionedString*)n args:(NSArray<PositionedString*>*)args {
++(instancetype) name:(PositionedString*)n args:(NSArray<SelectField*>*)args {
     SelectFunc *f = [SelectFunc new];
     f.name = n;
     f.args = args;
     return f;
 }
 -(NSString *)toSoql {
-    return [NSString stringWithFormat:@"%@(%@)", self.name.toSoql, [self.args valueForKey:@"toSoql"]];
+    NSMutableString *s = [NSMutableString stringWithCapacity:32];
+    [s appendString:self.name.toSoql];
+    [s appendString:@"("];
+    append(s, self.args);
+    [s appendString:@")"];
+    return s;
 }
 @end
 
@@ -84,7 +89,7 @@ void append(NSMutableString *q, NSArray *a) {
     return r;
 }
 -(NSString *)toSoql {
-    if (self.alias == nil) {
+    if (self.alias.val.length == 0) {
         return self.name.toSoql;
     }
     return [NSString stringWithFormat:@"%@ %@", self.name.toSoql, self.alias.toSoql];
@@ -165,16 +170,31 @@ ParserResult * pickVals(ParserResult*r) {
     return r;
 }
 
+@interface SoqlParser()
+@property (strong,nonatomic) ZKParser *parser;
+@end
+
 @implementation SoqlParser
 
+-(instancetype)init {
+    self = [super init];
+    self.parser = [self buildParser];
+    return self;
+}
+
 -(SelectQuery*)parse:(NSString *)input error:(NSError**)err {
+    return (SelectQuery*)[input parse:self.parser error:err].val;
+}
+
+-(ZKParser*)buildParser {
     ZKParserFactory *f = [ZKParserFactory new];
+    f.defaultCaseSensitivity = CaseInsensitive;
+
     NSSet<NSString*>* keywords = [NSSet setWithArray:@[@"from",@"where",@"order",@"by",@"having",@"limit",@"offset",@"group by",@"using",@"scope"]];
     BOOL(^ignoreKeywords)(NSObject*) = ^BOOL(NSObject *v) {
         NSString *s = (NSString *)v;
         return [keywords containsObject:[s lowercaseString]];
     };
-    f.defaultCaseSensitivity = CaseInsensitive;
     ZKParser* ws = [f whitespace];
     ZKParser* maybeWs = [f maybeWhitespace];
     ZKParser* commaSep = [f seq:@[maybeWs, [f skip:@","], maybeWs]];
@@ -188,14 +208,15 @@ ParserResult * pickVals(ParserResult*r) {
     }];
     ZKParser* func = [f seq:@[ident,
                               maybeWs,
-                              [f skip:@"("],
+                              [f eq:@"("],
                               maybeWs,
-                              field,
+                              [f oneOrMore:field separator:commaSep],
                               maybeWs,
-                              [f skip:@")"],
+                              [f eq:@")"],
                               [f zeroOrOne:[[ws then:@[ident]] onMatch:pick(1)] ignoring:ignoreKeywords]
                             ] onMatch:^ParserResult*(ParserResult*m) {
-        m.val = [SelectFunc name:[m.val[0] posString] args:@[[m.val[4] posString]]];
+        NSArray<ParserResult*>*c = (NSArray<ParserResult*>*)m.val;
+        m.val = [SelectFunc name:[c[0] posString] args:[[c[4] val] valueForKey:@"val"]];
         return m;
     }];
     
@@ -255,12 +276,11 @@ ParserResult * pickVals(ParserResult*r) {
         SelectQuery *q = [SelectQuery new];
         q.selectExprs = c[2].val;
         q.from = [c[6].val[0] val];
-        q.orderBy = c[8].val;
+        q.orderBy = c[8].val == [NSNull null] ? [OrderBys new] : c[8].val;
         m.val= q;
         return m;
     }];
-
-    return (SelectQuery*)[input parse:selectStmt error:err].val;
+    return selectStmt;
 }
 
 @end
