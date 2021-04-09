@@ -10,6 +10,16 @@
 #import "Soql.h"
 #import "ZKParser.h"
 
+@implementation ZKParserFactory (Soql)
+-(ZKParser *)oneOfFromString:(NSString *)items {
+    NSArray *list = [items componentsSeparatedByCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
+    NSMutableArray<ZKParser*> *parsers = [NSMutableArray arrayWithCapacity:list.count];
+    for (NSString *s in list) {
+        [parsers addObject:[self exactly:s]];
+    }
+    return [self oneOf:parsers];
+}
+@end
 
 @implementation ParserResult (Soql)
 -(PositionedString*)posString {
@@ -62,6 +72,7 @@ ParserResult * pickVals(ParserResult*r) {
                                name:@"identifier"
                                 min:1];
 
+    // SELECT LIST
     ZKParser *alias = [f zeroOrOne:[f seq:@[ws, ident] onMatch:pick(1)] ignoring:ignoreKeywords];
     ZKParser* field = [f seq:@[[f oneOrMore:ident separator:[f eq:@"."]], alias] onMatch:^ParserResult *(ArrayParserResult *m) {
         
@@ -100,6 +111,7 @@ ParserResult * pickVals(ParserResult*r) {
     }];
     selectExprs = [selectExprs or:@[countOnly]];
 
+    /// FROM
     ZKParser *objectRef = [f seq:@[ident, [f zeroOrOne:[f seq:@[ws, ident] onMatch:pick(1)] ignoring:ignoreKeywords]]
                          onMatch:^ParserResult *(ArrayParserResult *m) {
 
@@ -119,8 +131,40 @@ ParserResult * pickVals(ParserResult*r) {
         return r;
     }];
     
+    /// WHERE
+    ZKParser *operator = [f oneOfFromString:@"< <= > >= = != LIKE IN NOT INCLUDES EXCLUDES"];
+    NSCharacterSet *charSetQuote = [NSCharacterSet characterSetWithCharactersInString:@"'"];
+    ZKParser *literalValue = [f seq:@[[f eq:@"'"], [f notCharacters:charSetQuote name:@"literal" min:1], [f eq:@"'"]] onMatch:^ParserResult *(ArrayParserResult *r) {
+        LiteralValue *v = [LiteralValue new];
+        v.val = [r.child[1] posString];
+        v.loc = r.loc;
+        r.val = v;
+        return r;
+    }];
+    ZKParser *baseExpr = [f seq:@[field, maybeWs, operator, maybeWs, literalValue] onMatch:^ParserResult *(ArrayParserResult *r) {
+        Expr *e = [Expr leftF:r.child[0].val op:[r.child[2] posString] right:r.child[4].val loc:r.loc];
+        r.val = e;
+        return r;
+    }];
+
+    ZKParser *andOr = [f oneOfFromString:@"AND OR"];
+    ZKParser *exprs = [f seq:@[baseExpr, [f zeroOrMore:[f seq:@[ws, andOr, ws, baseExpr]]]] onMatch:^ParserResult *(ArrayParserResult *r) {
+        Expr *e = r.child[0].val;
+        for (ArrayParserResult *next in r.child[1].val) {
+            PositionedString *op = [next.child[1] posString];
+            LiteralValue *v = next.child[3].val;
+            e = [Expr leftE:e op:op right:v loc:next.loc];
+        }
+        r.val = e;
+        return r;
+    }];
+    ZKParser *where = [f zeroOrOne:[f seq:@[ws,[f eq:@"WHERE"], ws, exprs] onMatch:pick(3)]];
+    
+    /// FILTER SCOPE
     ZKParser *filterScope = [f zeroOrOne:[[ws then:@[[f eq:@"USING"], ws, [f eq:@"SCOPE"], ws, ident]] onMatch:pick(5)]];
 
+    
+    /// ORDER BY
     ZKParser *asc  = [f exactly:@"ASC" setValue:@YES];
     ZKParser *desc = [f exactly:@"DESC" setValue:@NO];
     ZKParser *ascDesc = [f seq:@[ws, [f oneOf:@[asc,desc]]] onMatch:pick(1)];
@@ -147,12 +191,15 @@ ParserResult * pickVals(ParserResult*r) {
         return r;
     }]];
 
-    ZKParser* selectStmt = [f seq:@[[f eq:@"SELECT"], ws, selectExprs, ws, [f eq:@"FROM"], ws, objectRefs, filterScope, orderByFields] onMatch:^ParserResult*(ArrayParserResult*m) {
+    /// SELECT
+    ZKParser* selectStmt = [f seq:@[[f eq:@"SELECT"], ws, selectExprs, ws, [f eq:@"FROM"], ws, objectRefs, filterScope, where, orderByFields] onMatch:^ParserResult*(ArrayParserResult*m) {
         SelectQuery *q = [SelectQuery new];
         q.selectExprs = m.child[2].val;
         q.from = m.child[6].val;
         q.filterScope = [m childIsNull:7] ? nil : [m.child[7] posString];
-        q.orderBy = [m childIsNull:8] ? [OrderBys new] : m.child[8].val;
+        q.where = [m childIsNull:8] ? nil : m.child[8].val;
+        q.orderBy = [m childIsNull:9] ? [OrderBys new] : m.child[9].val;
+        NSLog(@"where %@", m.child[8]);
         m.val= q;
         return m;
     }];
@@ -160,3 +207,5 @@ ParserResult * pickVals(ParserResult*r) {
 }
 
 @end
+
+

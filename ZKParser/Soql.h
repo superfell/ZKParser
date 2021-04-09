@@ -50,6 +50,19 @@
 @property (strong,nonatomic) NSArray<SelectField*>* relatedObjects;
 @end
 
+@interface LiteralValue : AstNode
+@property (strong,nonatomic) PositionedString *val; // TODO
+@end
+
+@interface Expr : AstNode
++(instancetype) leftF:(SelectField*)l op:(PositionedString*)op right:(LiteralValue*)right loc:(NSRange)loc;
++(instancetype) leftE:(Expr*)l op:(PositionedString*)op right:(LiteralValue*)right loc:(NSRange)loc;
+@property (strong,nonatomic) SelectField *leftField;
+@property (strong,nonatomic) Expr *leftExpr;
+@property (assign,nonatomic) PositionedString *op;
+@property (strong,nonatomic) LiteralValue *right;
+@end
+
 static const NSInteger NullsDefault = 1;
 static const NSInteger NullsFirst = 2;
 static const NSInteger NullsLast = 3;
@@ -70,6 +83,7 @@ static const NSInteger NullsLast = 3;
 @property (strong,nonatomic) NSArray *selectExprs;
 @property (strong,nonatomic) From *from;
 @property (strong,nonatomic) PositionedString *filterScope;
+@property (strong,nonatomic) Expr *where;
 @property (strong,nonatomic) OrderBys *orderBy;
 @property (assign,nonatomic) NSInteger limit;
 @property (assign,nonatomic) NSInteger offset;

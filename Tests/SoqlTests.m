@@ -79,4 +79,23 @@ SoqlParser *p = nil;
     XCTAssertNil(err);
 }
 
+-(void)testWHere {
+    NSError *err = nil;
+    SelectQuery *res = [p parse:@"select id from contact where name = 'bob'" error:&err];
+    XCTAssertEqualObjects([res toSoql], @"SELECT id FROM contact WHERE name='bob'");
+    XCTAssertNil(err);
+    
+    res = [p parse:@"select id from contact where name = 'bob' or name='alice'" error:&err];
+    XCTAssertEqualObjects([res toSoql], @"SELECT id FROM contact WHERE name='bob' OR name='alice'");
+    XCTAssertNil(err);
+
+    res = [p parse:@"select id from contact where name = 'bob' or name='alice' and city='SF'" error:&err];
+    XCTAssertEqualObjects([res toSoql], @"SELECT id FROM contact WHERE name='bob' OR name='alice' AND city='SF'");
+    XCTAssertNil(err);
+
+    res = [p parse:@"select id from contact where name = 'bob' or (name='alice' and city='SF')" error:&err];
+    XCTAssertEqualObjects([res toSoql], @"SELECT id FROM contact WHERE name='bob' OR name='alice' AND city='SF'");
+    XCTAssertNil(err);
+}
+
 @end

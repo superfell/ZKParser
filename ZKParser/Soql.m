@@ -139,8 +139,51 @@ void append(NSMutableString *q, NSArray *a) {
         append(dest, self.relatedObjects);
     }
 }
-
 @end
+
+@implementation LiteralValue
+-(void)appendSoql:(NSMutableString *)dest {
+    [dest appendString:@"'"];
+    [dest appendString: self.val.val];
+    [dest appendString:@"'"];
+}
+@end
+
+@implementation Expr
++(instancetype) leftF:(SelectField*)l op:(PositionedString*)op right:(LiteralValue*)right loc:(NSRange)loc {
+    Expr *e= [self new];
+    e.leftField = l;
+    e.op = op;
+    e.right = right;
+    e.loc = loc;
+    return e;
+}
+
++(instancetype) leftE:(Expr*)l op:(PositionedString*)op right:(LiteralValue*)right loc:(NSRange)loc {
+    Expr *e= [self new];
+    e.leftExpr = l;
+    e.op = op;
+    e.op.val = [op.val uppercaseString];
+    e.right = right;
+    e.loc = loc;
+    return e;
+}
+-(void)appendSoql:(NSMutableString *)dest {
+    if (self.leftField != nil) {
+        [dest appendString:@" "];
+        [self.leftField appendSoql:dest];
+    } else {
+        [self.leftExpr appendSoql:dest];
+    }
+    NSString *op = self.op.val;
+    if ([op isEqualToString:@"AND"] || [op isEqualToString:@"OR"]) {
+        [dest appendString:@" "];
+    }
+    [self.op appendSoql:dest];
+    [self.right appendSoql:dest];
+}
+@end
+
 @implementation OrderBys
 +(instancetype) by:(NSArray<OrderBy*>*)items loc:(NSRange)loc {
     OrderBys *r = [OrderBys new];
@@ -192,6 +235,10 @@ void append(NSMutableString *q, NSArray *a) {
     [self.from appendSoql:dest];
     if (self.filterScope.val.length > 0) {
         [dest appendFormat:@" USING SCOPE %@", self.filterScope.val];
+    }
+    if (self.where != nil) {
+        [dest appendString:@" WHERE"];
+        [self.where appendSoql:dest];
     }
     [self.orderBy appendSoql:dest];
     if (self.limit < NSIntegerMax) {

@@ -64,12 +64,14 @@
 @property (assign,nonatomic) BOOL returnValue;
 @end
 
-
 @interface ZKParserCharSet : ZKParser
 @property (strong,nonatomic) NSCharacterSet* charSet;
 @property (assign,nonatomic) NSUInteger minMatches;
 @property (strong,nonatomic) NSString *errorName;
 @property (assign,nonatomic) BOOL returnValue;
+@end
+
+@interface ZKParserNotCharSet : ZKParserCharSet
 @end
 
 @interface ZKParserOneOf()
@@ -134,6 +136,14 @@
 
 @end
 
+@implementation ZKParserRef
+
+-(ParserResult *)parse:(ZKParserInput*)input error:(NSError **)err {
+    return [self.parser parse:input error:err];
+}
+
+@end
+
 @implementation ZKParserMapper
 -(ParserResult *)parse:(ZKParserInput*)input error:(NSError **)err {
     ParserResult *res = [self.inner parse:input error:err];
@@ -193,7 +203,17 @@
 -(NSString *)description {
     return [NSString stringWithFormat:@"{%@ x %lu}", self.errorName, self.minMatches];
 }
+@end
 
+@implementation ZKParserNotCharSet
+
+-(void)setCharSet:(NSCharacterSet*)set {
+    [super setCharSet:[set invertedSet]];
+}
+
+-(NSString *)description {
+    return [NSString stringWithFormat:@"{!%@ x %lu}", self.errorName, self.minMatches];
+}
 @end
 
 @implementation ZKParserOneOf
@@ -425,6 +445,15 @@
 
 -(ZKParser*)characters:(NSCharacterSet*)set name:(NSString*)name min:(NSUInteger)minMatches {
     ZKParserCharSet *w = [ZKParserCharSet new];
+    w.charSet = set;
+    w.errorName = name;
+    w.minMatches = minMatches;
+    w.returnValue = YES;
+    return w;
+}
+
+-(ZKParser*)notCharacters:(NSCharacterSet*)set name:(NSString *)name min:(NSUInteger)minMatches {
+    ZKParserCharSet *w = [ZKParserNotCharSet new];
     w.charSet = set;
     w.errorName = name;
     w.minMatches = minMatches;

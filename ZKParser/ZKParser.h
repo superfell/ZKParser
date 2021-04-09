@@ -55,6 +55,13 @@ typedef ParserResult *(^ArrayMapperBlock)(ArrayParserResult *r);
 -(ZKParserSeq*)onMatch:(ArrayMapperBlock)block;
 @end
 
+// ParserRef lets you pass a parser to another parser, and later
+// change the actual parser in use. Useful for dealing with
+// recursive definitions.
+@interface ZKParserRef : ZKParser
+@property (strong,nonatomic) ZKParser *parser;
+@end
+
 @interface ZKParserFactory : NSObject
 
 @property(assign,nonatomic) ZKCaseSensitivity defaultCaseSensitivity;
@@ -66,7 +73,13 @@ typedef ParserResult *(^ArrayMapperBlock)(ArrayParserResult *r);
 -(ZKParser*)exactly:(NSString *)s setValue:(NSObject*)val;    // case sensitive set by defaultCaseSensitivity
 -(ZKParser*)exactly:(NSString *)s case:(ZKCaseSensitivity)c;
 -(ZKParser*)exactly:(NSString *)s case:(ZKCaseSensitivity)c onMatch:(MapperBlock)block;
+
+// match 0 or more consecutive characters that are in the character set.
 -(ZKParser*)characters:(NSCharacterSet*)set name:(NSString *)name min:(NSUInteger)minMatches;
+
+// match 0 or more consecutive characters not in the supplied character set.
+-(ZKParser*)notCharacters:(NSCharacterSet*)set name:(NSString *)name min:(NSUInteger)minMatches;
+
 -(ZKParser*)skip:(NSString *)s;       // same as exactly, but doesn't return a value.
 
 -(ZKParserSeq*)seq:(NSArray<ZKParser*>*)items;
