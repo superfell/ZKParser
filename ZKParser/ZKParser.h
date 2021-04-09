@@ -18,11 +18,20 @@
 
 @property (strong,nonatomic) id val;
 @property (assign,nonatomic) NSRange loc;
--(NSArray<ParserResult*>*)children;
+@end
 
+@interface ArrayParserResult : ParserResult
++(instancetype)result:(NSArray<ParserResult*>*)val loc:(NSRange)loc;
+
+@property (strong,nonatomic) NSArray<ParserResult*> *child;
+// returns the val field from each of the child results.
+-(NSArray*)childVals;
+// returns true if the value for the indicated child is nil or [NSNull null]
+-(BOOL)childIsNull:(NSInteger)idx;
 @end
 
 typedef ParserResult *(^MapperBlock)(ParserResult *r);
+typedef ParserResult *(^ArrayMapperBlock)(ArrayParserResult *r);
 
 
 @interface ZKParser : NSObject
@@ -39,11 +48,11 @@ typedef ParserResult *(^MapperBlock)(ParserResult *r);
 @end
 
 @interface ZKParserSeq : ZKParser
--(ZKParserSeq*)onMatch:(MapperBlock)block;
+-(ZKParserSeq*)onMatch:(ArrayMapperBlock)block;
 @end
 
 @interface ZKParserRepeat : ZKParser
--(ZKParserSeq*)onMatch:(MapperBlock)block;
+-(ZKParserSeq*)onMatch:(ArrayMapperBlock)block;
 @end
 
 @interface ZKParserFactory : NSObject
@@ -61,7 +70,7 @@ typedef ParserResult *(^MapperBlock)(ParserResult *r);
 -(ZKParser*)skip:(NSString *)s;       // same as exactly, but doesn't return a value.
 
 -(ZKParserSeq*)seq:(NSArray<ZKParser*>*)items;
--(ZKParserSeq*)seq:(NSArray<ZKParser*>*)items onMatch:(MapperBlock)block;
+-(ZKParserSeq*)seq:(NSArray<ZKParser*>*)items onMatch:(ArrayMapperBlock)block;
 
 -(ZKParserOneOf*)oneOf:(NSArray<ZKParser*>*)items;  // NSFastEnumeration ? // onMatch version
 -(ZKParserOneOf*)oneOf:(NSArray<ZKParser*>*)items onMatch:(MapperBlock)block;

@@ -8,9 +8,9 @@
 
 #import "ZKParser.h"
 
-@implementation ParserResult : NSObject
+@implementation ParserResult
 +(instancetype)result:(NSObject*)val loc:(NSRange)loc {
-    ParserResult *r = [ParserResult new];
+    ParserResult *r = [self new];
     r.val = val;
     r.loc = loc;
     return r;
@@ -18,9 +18,9 @@
 +(instancetype)result:(NSObject*)val locs:(NSArray<ParserResult*>*)locs {
     if (locs.count > 0) {
         NSRange loc = NSUnionRange(locs[0].loc, [locs lastObject].loc);
-        return [ParserResult result:val loc:loc];
+        return [self result:val loc:loc];
     }
-    return [ParserResult result:val loc:NSMakeRange(0,0)];
+    return [self result:val loc:NSMakeRange(0,0)];
 }
 -(BOOL)isEqual:(ParserResult*)other {
     return [self.val isEqual:other.val] && (self.loc.location == other.loc.location) && (self.loc.length == other.loc.length);
@@ -33,6 +33,28 @@
 -(NSString*)description {
     return [NSString stringWithFormat:@"%@ {%lu,%lu}", self.val, self.loc.location, self.loc.length];
 }
+@end
+
+@implementation ArrayParserResult
++(instancetype)result:(NSArray<ParserResult*>*)val loc:(NSRange)loc {
+    ArrayParserResult *r = [ArrayParserResult new];
+    r.val = val;
+    r.loc = loc;
+    r.child = val;
+    return r;
+}
+-(NSArray*)childVals {
+    return [self.child valueForKey:@"val"];
+}
+-(BOOL)childIsNull:(NSInteger)idx {
+    ParserResult *r = self.child[idx];
+    return r.val == [NSNull null] || r.val == nil;
+}
+-(void)setVal:(id)v {
+    super.val = v;
+    self.child = v;
+}
+
 @end
 
 @interface ZKParserExact : ZKParser
@@ -56,17 +78,17 @@
 @end
 
 @interface ZKParserSeq()
-@property (strong,nonatomic) MapperBlock matchBlock;
+@property (strong,nonatomic) ArrayMapperBlock matchBlock;
 @property (strong,nonatomic) NSArray<ZKParser*>* items;
 @end
 
 @interface ZKParserRepeat()
 +(instancetype)repeated:(ZKParser*)p sep:(ZKParser*)sep min:(NSUInteger)min max:(NSUInteger)max;
+@property (strong,nonatomic) ArrayMapperBlock matchBlock;
 @property (strong,nonatomic) ZKParser *parser;
 @property (strong,nonatomic) ZKParser *separator;
 @property (assign,nonatomic) NSUInteger min;
 @property (assign,nonatomic) NSUInteger max;
-@property (strong,nonatomic) MapperBlock matchBlock;
 @end
 
 @interface ZKParserOptional : ZKParser
@@ -235,14 +257,14 @@
         }
         [out addObject:res];
     }
-    ParserResult *r = [ParserResult result:out loc:NSMakeRange(start, input.pos-start)];
+    ArrayParserResult *r = [ArrayParserResult result:out loc:NSMakeRange(start, input.pos-start)];
     if (self.matchBlock != nil) {
         return self.matchBlock(r);
     }
     return r;
 }
 
--(ZKParserSeq*)onMatch:(MapperBlock)block {
+-(ZKParserSeq*)onMatch:(ArrayMapperBlock)block {
     self.matchBlock = block;
     return self;
 }
@@ -275,7 +297,7 @@
     return r;
 }
 
--(ZKParserRepeat*)onMatch:(MapperBlock)block {
+-(ZKParserRepeat*)onMatch:(ArrayMapperBlock)block {
     self.matchBlock = block;
     return self;
 }
@@ -305,7 +327,7 @@
         }
     }
     if (out.count >= self.min) {
-        ParserResult *r = [ParserResult result:out loc:NSMakeRange(start, input.pos-start)];
+        ArrayParserResult *r = [ArrayParserResult result:out loc:NSMakeRange(start, input.pos-start)];
         return self.matchBlock(r);
     }
     *err = nextError;
@@ -429,7 +451,7 @@
     return s;
 }
 
--(ZKParser*)seq:(NSArray<ZKParser*>*)items onMatch:(MapperBlock)block {
+-(ZKParser*)seq:(NSArray<ZKParser*>*)items onMatch:(ArrayMapperBlock)block {
     ZKParserSeq *s = [ZKParserSeq new];
     s.items = items;
     s.matchBlock = block;

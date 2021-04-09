@@ -61,10 +61,10 @@ ParserResult * pickVals(ParserResult*r) {
                                 min:1];
 
     ZKParser *alias = [f zeroOrOne:[f seq:@[ws, ident] onMatch:pick(1)] ignoring:ignoreKeywords];
-    ZKParser* field = [f seq:@[[f oneOrMore:ident separator:[f eq:@"."]], alias] onMatch:^ParserResult *(ParserResult *m) {
+    ZKParser* field = [f seq:@[[f oneOrMore:ident separator:[f eq:@"."]], alias] onMatch:^ParserResult *(ArrayParserResult *m) {
         
-        m.val = [SelectField name:[PositionedString fromArray:[m.children[0] valueForKey:@"val"]]
-                            alias:(m.children[1].val != [NSNull null] ? [m.children[1] posString] : nil)
+        m.val = [SelectField name:[PositionedString fromArray:[m.child[0] valueForKey:@"val"]]
+                            alias:([m childIsNull:1] ? nil : [m.child[1] posString])
                               loc:m.loc];
         return m;
     }];
@@ -76,17 +76,18 @@ ParserResult * pickVals(ParserResult*r) {
                               maybeWs,
                               [f eq:@")"],
                               alias
-                            ] onMatch:^ParserResult*(ParserResult*m) {
-        NSArray<ParserResult*>*c = (NSArray<ParserResult*>*)m.val;
-        m.val = [SelectFunc name:[c[0] posString] args:[[c[4] val] valueForKey:@"val"] alias:c[7].val == [NSNull null] ? nil : [c[7] posString] loc:m.loc];
+                            ] onMatch:^ParserResult*(ArrayParserResult*m) {
+        
+        m.val = [SelectFunc name:[m.child[0] posString]
+                            args:[m.child[4].val valueForKey:@"val"]
+                           alias:[m childIsNull:7] ? nil : [m.child[7] posString]
+                             loc:m.loc];
         return m;
     }];
     
     ZKParser* selectExpr = [field or:@[func]];
-    ZKParser* selectExprs = [[f oneOrMore:selectExpr separator:commaSep] onMatch:^ParserResult *(ParserResult *r) {
-        NSArray<ParserResult*>* c = (NSArray<ParserResult*>*)r.val;
-        NSArray *out = [c valueForKey:@"val"];
-        r.val = out;
+    ZKParser* selectExprs = [[f oneOrMore:selectExpr separator:commaSep] onMatch:^ParserResult *(ArrayParserResult *r) {
+        r.val = r.childVals;
         return r;
     }];
     selectExprs = [selectExprs or:@[[f exactly:@"count()" case:CaseInsensitive onMatch:^ParserResult *(ParserResult *s) {
@@ -95,18 +96,21 @@ ParserResult * pickVals(ParserResult*r) {
     }]]];
 
     ZKParser *objectRef = [f seq:@[ident, [f zeroOrOne:[f seq:@[ws, ident] onMatch:pick(1)] ignoring:ignoreKeywords]]
-                         onMatch:^ParserResult *(ParserResult *m) {
-        NSArray<ParserResult*>* c = (NSArray<ParserResult*>*)m.val;
-        m.val = [SObjectRef name:[c[0] posString] alias:[c[1] val] == [NSNull null] ? nil : [c[1] posString] loc:m.loc];
+                         onMatch:^ParserResult *(ArrayParserResult *m) {
+
+        m.val = [SObjectRef name:m.child[0].posString
+                           alias:[m childIsNull:1] ? nil : m.child[1].posString
+                             loc:m.loc];
         return m;
     }];
     ZKParser *objectRefs = [f seq:@[objectRef,
                                 [f zeroOrOne:[f seq:@[commaSep,
                                                       [f oneOrMore:field separator:commaSep]] onMatch:pick(1)]]]
-                          onMatch:^ParserResult *(ParserResult*r) {
+                          onMatch:^ParserResult *(ArrayParserResult*r) {
 
-        NSArray<ParserResult*>*c = (NSArray<ParserResult*>*)r.val;
-        r.val = [From sobject:c[0].val related:c[1].val == [NSNull null] ? @[] : [c[1].val valueForKey:@"val"] loc:r.loc];
+        r.val = [From sobject:r.child[0].val
+                      related:[r childIsNull:1] ? @[] : [r.child[1].val valueForKey:@"val"]
+                          loc:r.loc];
         return r;
     }];
     
@@ -118,33 +122,32 @@ ParserResult * pickVals(ParserResult*r) {
     ZKParser *nulls = [f seq:@[ws, [f eq:@"NULLS"], ws,
                                [f oneOf:@[[f exactly:@"FIRST" setValue:@(NullsFirst)], [f exactly:@"LAST" setValue:@(NullsLast)]]]]
                      onMatch:pick(3)];
-    ZKParser *orderByField = [f seq:@[field, [f zeroOrOne:ascDesc], [f zeroOrOne:nulls]] onMatch:^ParserResult*(ParserResult*m) {
-        NSArray<ParserResult*>* c = (NSArray<ParserResult*>*)m.val;
+    ZKParser *orderByField = [f seq:@[field, [f zeroOrOne:ascDesc], [f zeroOrOne:nulls]] onMatch:^ParserResult*(ArrayParserResult*m) {
         BOOL asc = YES;
         NSInteger nulls = NullsDefault;
-        if (c[1].val != [NSNull null]) {
-            asc = [c[1].val boolValue];
+        if (![m childIsNull:1]) {
+            asc = [m.child[1].val boolValue];
         }
-        if (c[2].val != [NSNull null]) {
-            nulls = [c[2].val integerValue];
+        if (![m childIsNull:2]) {
+            nulls = [m.child[2].val integerValue];
         }
-        m.val = [OrderBy field:(SelectField*)c[0].val asc:asc nulls:nulls loc:m.loc];
+        assert([m.child[0].val isKindOfClass:[SelectField class]]);
+        m.val = [OrderBy field:(SelectField*)m.child[0].val asc:asc nulls:nulls loc:m.loc];
         return m;
     }];
-    ZKParser *orderByFields = [f zeroOrOne:[f seq:@[ws,[f skip:@"ORDER"],ws,[f skip:@"BY"],ws,[f oneOrMore:orderByField separator:commaSep]] onMatch:^ParserResult*(ParserResult*r) {
+    ZKParser *orderByFields = [f zeroOrOne:[f seq:@[ws,[f skip:@"ORDER"],ws,[f skip:@"BY"],ws,[f oneOrMore:orderByField separator:commaSep]] onMatch:^ParserResult*(ArrayParserResult*r) {
         
-        NSArray<ParserResult*>* c = (NSArray<ParserResult*>*)r.val;
-        r.val = [OrderBys by:[c[5].val valueForKey:@"val"] loc:NSUnionRange(c[1].loc, c[3].loc)];
+        // loc for OrderBys is just the ORDER BY keyword.
+        r.val = [OrderBys by:[r.child[5].val valueForKey:@"val"] loc:NSUnionRange(r.child[1].loc, r.child[3].loc)];
         return r;
     }]];
 
-    ZKParser* selectStmt = [f seq:@[[f eq:@"SELECT"], ws, selectExprs, ws, [f eq:@"FROM"], ws, objectRefs, filterScope, orderByFields] onMatch:^ParserResult*(ParserResult*m) {
-        NSArray<ParserResult*>* c = (NSArray<ParserResult*>*)m.val;
+    ZKParser* selectStmt = [f seq:@[[f eq:@"SELECT"], ws, selectExprs, ws, [f eq:@"FROM"], ws, objectRefs, filterScope, orderByFields] onMatch:^ParserResult*(ArrayParserResult*m) {
         SelectQuery *q = [SelectQuery new];
-        q.selectExprs = c[2].val;
-        q.from = c[6].val;
-        q.filterScope = c[7].val == [NSNull null] ? nil : [c[7] posString];
-        q.orderBy = c[8].val == [NSNull null] ? [OrderBys new] : c[8].val;
+        q.selectExprs = m.child[2].val;
+        q.from = m.child[6].val;
+        q.filterScope = [m childIsNull:7] ? nil : [m.child[7] posString];
+        q.orderBy = [m childIsNull:8] ? [OrderBys new] : m.child[8].val;
         m.val= q;
         return m;
     }];
