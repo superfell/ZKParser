@@ -90,10 +90,13 @@ ParserResult * pickVals(ParserResult*r) {
         r.val = r.childVals;
         return r;
     }];
-    selectExprs = [selectExprs or:@[[f exactly:@"count()" case:CaseInsensitive onMatch:^ParserResult *(ParserResult *s) {
-        s.val = [SelectFunc name:[s posString] args:@[] alias:nil loc:s.loc];
-        return s;
-    }]]];
+    ZKParser *countOnly = [f seq:@[[f eq:@"count"], maybeWs, [f eq:@"("], maybeWs, [f eq:@")"]] onMatch:^ParserResult *(ArrayParserResult *r) {
+        // Should we just let count() be handled by the regular func matcher? and not deal with the fact it can only
+        // appear on its own.
+        r.val =@[[SelectFunc name:[r.child[0] posString] args:@[] alias:nil loc:r.loc]];
+        return r;
+    }];
+    selectExprs = [selectExprs or:@[countOnly]];
 
     ZKParser *objectRef = [f seq:@[ident, [f zeroOrOne:[f seq:@[ws, ident] onMatch:pick(1)] ignoring:ignoreKeywords]]
                          onMatch:^ParserResult *(ArrayParserResult *m) {

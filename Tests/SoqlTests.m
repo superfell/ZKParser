@@ -40,6 +40,14 @@ SoqlParser *p = nil;
     res = [p parse:@"SELECT max(createdBy.createdDate, createdDate) from account" error:&err];
     XCTAssertEqualObjects([res toSoql], @"SELECT max(createdBy.createdDate,createdDate) FROM account");
     XCTAssertNil(err);
+
+    res = [p parse:@"SELECT count() from account" error:&err];
+    XCTAssertEqualObjects([res toSoql], @"SELECT count() FROM account");
+    XCTAssertNil(err);
+
+    // count() is special and can only appear on its own (unlike count(some_field))
+    res = [p parse:@"SELECT count(), id from account" error:&err];
+    XCTAssertEqualObjects(@"expecting whitespace at position 15", err.localizedDescription);
 }
 
 -(void)testFrom {
