@@ -74,6 +74,11 @@
 @interface ZKParserNotCharSet : ZKParserCharSet
 @end
 
+@interface ZKParserFirstOf : ZKParser
+@property (strong,nonatomic) MapperBlock matchBlock;
+@property (strong,nonatomic) NSArray<ZKParser*>* items;
+@end
+
 @interface ZKParserOneOf()
 @property (strong,nonatomic) MapperBlock matchBlock;
 @property (strong,nonatomic) NSArray<ZKParser*>* items;
@@ -225,6 +230,30 @@
 
 -(NSString *)description {
     return [NSString stringWithFormat:@"{!%@ x %lu}", self.errorName, self.minMatches];
+}
+@end
+
+@implementation ZKParserFirstOf
+
++(instancetype)firstOf:(NSArray<ZKParser*>*)opts {
+    ZKParserFirstOf *p = [ZKParserFirstOf new];
+    p.items = opts;
+    return p;
+}
+
+-(ParserResult *)parseImpl:(ZKParserInput*)input error:(NSError **)err {
+    NSUInteger start = input.pos;
+    for (ZKParser *child in self.items) {
+        ParserResult *r = [child parse:input error:err];
+        if (*err == nil) {
+            if (self.matchBlock != nil) {
+                r = self.matchBlock(r);
+            }
+            return r;
+        }
+        [input rewindTo:start];
+    }
+    return nil;
 }
 @end
 
@@ -494,13 +523,23 @@
     return w;
 }
 
--(ZKParser*)oneOf:(NSArray<ZKParser*>*)items {  // NSFastEnumeration ?
+-(ZKParser*)firstOf:(NSArray<ZKParser*>*)items {
+    return [ZKParserFirstOf firstOf:items];
+}
+
+-(ZKParser*)firstOf:(NSArray<ZKParser*>*)items onMatch:(MapperBlock)block {
+    ZKParserFirstOf *p = [ZKParserFirstOf firstOf:items];
+    p.matchBlock = block;
+    return p;
+}
+
+-(ZKParser*)oneOf:(NSArray<ZKParser*>*)items {
     ZKParserOneOf *o = [ZKParserOneOf new];
     o.items = items;
     return o;
 }
 
--(ZKParser*)oneOf:(NSArray<ZKParser*>*)items onMatch:(MapperBlock)block {  // NSFastEnumeration ?
+-(ZKParser*)oneOf:(NSArray<ZKParser*>*)items onMatch:(MapperBlock)block {
     ZKParserOneOf *o = [ZKParserOneOf new];
     o.items = items;
     o.matchBlock = block;

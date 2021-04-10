@@ -38,29 +38,6 @@ ParserResult * pickVals(ParserResult*r) {
     return r;
 }
 
-@interface OneOfOrd : ZKParser
-@property (strong,nonatomic) NSArray<ZKParser*>* items;
-@end
-@implementation OneOfOrd
-+(ZKParser*)oneOfOrd:(NSArray<ZKParser*>*)opts {
-    OneOfOrd *p = [OneOfOrd new];
-    p.items = opts;
-    return p;
-}
-
--(ParserResult *)parseImpl:(ZKParserInput*)input error:(NSError **)err {
-    NSUInteger start = input.pos;
-    for (ZKParser *child in self.items) {
-        ParserResult *r = [child parse:input error:err];
-        if (*err == nil) {
-            return r;
-        }
-        [input rewindTo:start];
-    }
-    return nil;
-}
-@end
-
 @interface SoqlParser()
 @property (strong,nonatomic) ZKParser *parser;
 @end
@@ -175,8 +152,8 @@ ParserResult * pickVals(ParserResult*r) {
     // be careful not to use oneOf with it as that will recurse infinitly because it checks all branches.
     ZKParserRef *exprList = [ZKParserRef new];
     ZKParser *parens = [f seq:@[[f eq:@"("], maybeWs, exprList, maybeWs, [f eq:@")"]] onMatch:pick(2)];
-    ZKParser *andOr = [f seq:@[ws,[f oneOfFromString:@"AND OR"],ws] onMatch:pick(1)];
-    exprList.parser = [f seq:@[[OneOfOrd oneOfOrd:@[parens, baseExpr]], [f zeroOrOne:[f seq:@[andOr, exprList]]]] onMatch:^ParserResult*(ArrayParserResult*r) {
+    ZKParser *andOr = [f seq:@[ws, [f oneOfFromString:@"AND OR"], ws] onMatch:pick(1)];
+    exprList.parser = [f seq:@[[f firstOf:@[parens, baseExpr]], [f zeroOrOne:[f seq:@[andOr, exprList]]]] onMatch:^ParserResult*(ArrayParserResult*r) {
         Expr *left = r.child[0].val;
         if ([r childIsNull:1]) {
             r.val = left;

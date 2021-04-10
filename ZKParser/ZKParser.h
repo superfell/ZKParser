@@ -89,7 +89,12 @@ typedef ParserResult *(^ParseBlock)(ZKParserInput*input,NSError **err);
 -(ZKParserSeq*)seq:(NSArray<ZKParser*>*)items;
 -(ZKParserSeq*)seq:(NSArray<ZKParser*>*)items onMatch:(ArrayMapperBlock)block;
 
--(ZKParserOneOf*)oneOf:(NSArray<ZKParser*>*)items;  // NSFastEnumeration ? // onMatch version
+// selects the first item from the list that matches
+-(ZKParser*)firstOf:(NSArray<ZKParser*>*)items;
+-(ZKParser*)firstOf:(NSArray<ZKParser*>*)items onMatch:(MapperBlock)block;
+
+// selects the item from the list that has the longest match, all items are evaluated.
+-(ZKParserOneOf*)oneOf:(NSArray<ZKParser*>*)items;
 -(ZKParserOneOf*)oneOf:(NSArray<ZKParser*>*)items onMatch:(MapperBlock)block;
 
 -(ZKParserRepeat*)zeroOrMore:(ZKParser*)p;
