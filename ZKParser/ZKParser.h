@@ -72,7 +72,6 @@ typedef ParserResult *(^ParseBlock)(ZKParserInput*input,NSError **err);
 -(ZKSingularParser*)exactly:(NSString *)s setValue:(NSObject*)val;    // case sensitive set by defaultCaseSensitivity
 
 -(ZKSingularParser*)exactly:(NSString *)s case:(ZKCaseSensitivity)c;
--(ZKSingularParser*)exactly:(NSString *)s case:(ZKCaseSensitivity)c onMatch:(ResultMapper)block;
 
 // match 'min' or more consecutive characters that are in the character set.
 -(ZKSingularParser*)characters:(NSCharacterSet*)set name:(NSString *)name min:(NSUInteger)minMatches;
@@ -81,18 +80,15 @@ typedef ParserResult *(^ParseBlock)(ZKParserInput*input,NSError **err);
 -(ZKSingularParser*)notCharacters:(NSCharacterSet*)set name:(NSString *)name min:(NSUInteger)minMatches;
 
 -(ZKArrayParser*)seq:(NSArray<ZKParser*>*)items;
--(ZKArrayParser*)seq:(NSArray<ZKParser*>*)items onMatch:(ArrayResultMapper)block;
 
 // selects the first item from the list that matches
 -(ZKSingularParser*)firstOf:(NSArray<ZKParser*>*)items;
--(ZKSingularParser*)firstOf:(NSArray<ZKParser*>*)items onMatch:(ResultMapper)block;
 
 // tokens is a whitespace separated list of tokens, returns the matching token.
 -(ZKSingularParser*)oneOfTokens:(NSString *)tokens;
 
 // selects the item from the list that has the longest match, all items are evaluated.
 -(ZKSingularParser*)oneOf:(NSArray<ZKParser*>*)items;
--(ZKSingularParser*)oneOf:(NSArray<ZKParser*>*)items onMatch:(ResultMapper)block;
 
 -(ZKArrayParser*)zeroOrMore:(ZKParser*)p;
 -(ZKArrayParser*)oneOrMore:(ZKParser*)p;
@@ -106,7 +102,6 @@ typedef ParserResult *(^ParseBlock)(ZKParserInput*input,NSError **err);
 
 // Constructs a new Parser instance from the supplied block
 -(ZKSingularParser*)fromBlock:(ParseBlock)parser;
--(ZKSingularParser*)fromBlock:(ParseBlock)parser mapper:(ResultMapper)m;
 
 // Constucts a new parser that contains a reference to another parser. Can be used to
 // refer to as yet unconstructed parsers where there are circular or recursive definitions.

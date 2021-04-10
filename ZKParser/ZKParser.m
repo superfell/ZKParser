@@ -382,16 +382,11 @@
 
 @implementation ZKParserFactory
 
--(ZKSingularParser*)exactly:(NSString *)s case:(ZKCaseSensitivity)c onMatch:(ResultMapper)block {
+-(ZKSingularParser*)exactly:(NSString *)s case:(ZKCaseSensitivity)c {
     ZKParserExact *e = [ZKParserExact new];
     e.match = s;
     e.caseSensitivity = c;
-    e.mapper = block;
     return e;
-}
-
--(ZKSingularParser*)exactly:(NSString *)s case:(ZKCaseSensitivity)c {
-    return [self exactly:s case:c onMatch:nil];
 }
 
 -(ZKSingularParser*)eq:(NSString *)s {
@@ -400,7 +395,7 @@
 
 // setValue should be helper function instead? same as pick.
 -(ZKSingularParser*)exactly:(NSString *)s setValue:(NSObject*)val {
-    return [self exactly:s case:self.defaultCaseSensitivity onMatch:^ParserResult*(ParserResult*r) {
+    return [[self exactly:s case:self.defaultCaseSensitivity] onMatch:^ParserResult*(ParserResult*r) {
         r.val = val;
         return r;
     }];
@@ -442,12 +437,6 @@
     return [ZKParserFirstOf firstOf:items];
 }
 
--(ZKSingularParser*)firstOf:(NSArray<ZKParser*>*)items onMatch:(ResultMapper)block {
-    ZKParserFirstOf *p = [ZKParserFirstOf firstOf:items];
-    p.mapper = block;
-    return p;
-}
-
 -(ZKSingularParser *)oneOfTokens:(NSString *)items {
     // although its called oneOf... we can use firstOf because all the tokens are unique, we sort them
     // longest to shortest so that the longest match matches first.
@@ -476,23 +465,9 @@
     return o;
 }
 
--(ZKSingularParser*)oneOf:(NSArray<ZKParser*>*)items onMatch:(ResultMapper)block {
-    ZKParserOneOf *o = [ZKParserOneOf new];
-    o.items = items;
-    o.mapper = block;
-    return o;
-}
-
 -(ZKArrayParser*)seq:(NSArray<ZKParser*>*)items {
     ZKParserSeq *s = [ZKParserSeq new];
     s.items = items;
-    return s;
-}
-
--(ZKArrayParser*)seq:(NSArray<ZKParser*>*)items onMatch:(ArrayResultMapper)block {
-    ZKParserSeq *s = [ZKParserSeq new];
-    s.items = items;
-    s.mapper = block;
     return s;
 }
 
@@ -538,10 +513,6 @@
 
 -(ZKSingularParser*)fromBlock:(ParseBlock)parser {
     return [ZKParserBlock block:parser mapper:nil];
-}
-
--(ZKSingularParser*)fromBlock:(ParseBlock)parser mapper:(ResultMapper)m {
-    return [ZKParserBlock block:parser mapper:m];
 }
 
 -(ZKParserRef*)parserRef {
