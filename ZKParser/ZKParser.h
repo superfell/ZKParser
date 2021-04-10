@@ -49,15 +49,6 @@ typedef ParserResult *(^ArrayResultMapper)(ArrayParserResult *r);
 -(instancetype)onMatch:(ArrayResultMapper)block;
 @end
 
-@interface ZKParserOneOf : ZKSingularParser
-@end
-
-@interface ZKParserSeq : ZKArrayParser
-@end
-
-@interface ZKParserRepeat : ZKArrayParser
-@end
-
 // ParserRef lets you pass a parser to another parser, and later
 // change the actual parser in use. Useful for dealing with
 // recursive definitions.
@@ -72,50 +63,50 @@ typedef ParserResult *(^ParseBlock)(ZKParserInput*input,NSError **err);
 @property(assign,nonatomic) ZKCaseSensitivity defaultCaseSensitivity;
 
 /// 1 or more whitespace characters
--(ZKParser*)whitespace;
+-(ZKSingularParser*)whitespace;
 /// 0 or more whitespace characters
--(ZKParser*)maybeWhitespace;
+-(ZKSingularParser*)maybeWhitespace;
 
 /// Exact match. Case sensitive set by defaultCaseSensitivity
--(ZKParser*)eq:(NSString *)s;
--(ZKParser*)exactly:(NSString *)s setValue:(NSObject*)val;    // case sensitive set by defaultCaseSensitivity
+-(ZKSingularParser*)eq:(NSString *)s;
+-(ZKSingularParser*)exactly:(NSString *)s setValue:(NSObject*)val;    // case sensitive set by defaultCaseSensitivity
 
--(ZKParser*)exactly:(NSString *)s case:(ZKCaseSensitivity)c;
--(ZKParser*)exactly:(NSString *)s case:(ZKCaseSensitivity)c onMatch:(ResultMapper)block;
+-(ZKSingularParser*)exactly:(NSString *)s case:(ZKCaseSensitivity)c;
+-(ZKSingularParser*)exactly:(NSString *)s case:(ZKCaseSensitivity)c onMatch:(ResultMapper)block;
 
 // match 'min' or more consecutive characters that are in the character set.
--(ZKParser*)characters:(NSCharacterSet*)set name:(NSString *)name min:(NSUInteger)minMatches;
+-(ZKSingularParser*)characters:(NSCharacterSet*)set name:(NSString *)name min:(NSUInteger)minMatches;
 
 // match 'min' or more consecutive characters that are not in the supplied character set.
--(ZKParser*)notCharacters:(NSCharacterSet*)set name:(NSString *)name min:(NSUInteger)minMatches;
+-(ZKSingularParser*)notCharacters:(NSCharacterSet*)set name:(NSString *)name min:(NSUInteger)minMatches;
 
--(ZKParserSeq*)seq:(NSArray<ZKParser*>*)items;
--(ZKParserSeq*)seq:(NSArray<ZKParser*>*)items onMatch:(ArrayResultMapper)block;
+-(ZKArrayParser*)seq:(NSArray<ZKParser*>*)items;
+-(ZKArrayParser*)seq:(NSArray<ZKParser*>*)items onMatch:(ArrayResultMapper)block;
 
 // selects the first item from the list that matches
--(ZKParser*)firstOf:(NSArray<ZKParser*>*)items;
--(ZKParser*)firstOf:(NSArray<ZKParser*>*)items onMatch:(ResultMapper)block;
+-(ZKSingularParser*)firstOf:(NSArray<ZKParser*>*)items;
+-(ZKSingularParser*)firstOf:(NSArray<ZKParser*>*)items onMatch:(ResultMapper)block;
 
 // tokens is a whitespace separated list of tokens, returns the matching token.
--(ZKParser*)oneOfTokens:(NSString *)tokens;
+-(ZKSingularParser*)oneOfTokens:(NSString *)tokens;
 
 // selects the item from the list that has the longest match, all items are evaluated.
--(ZKParserOneOf*)oneOf:(NSArray<ZKParser*>*)items;
--(ZKParserOneOf*)oneOf:(NSArray<ZKParser*>*)items onMatch:(ResultMapper)block;
+-(ZKSingularParser*)oneOf:(NSArray<ZKParser*>*)items;
+-(ZKSingularParser*)oneOf:(NSArray<ZKParser*>*)items onMatch:(ResultMapper)block;
 
--(ZKParserRepeat*)zeroOrMore:(ZKParser*)p;
--(ZKParserRepeat*)oneOrMore:(ZKParser*)p;
--(ZKParserRepeat*)zeroOrMore:(ZKParser*)p separator:(ZKParser*)sep;
--(ZKParserRepeat*)oneOrMore:(ZKParser*)p separator:(ZKParser*)sep;
--(ZKParserRepeat*)zeroOrMore:(ZKParser*)p separator:(ZKParser*)sep max:(NSUInteger)maxItems;
--(ZKParserRepeat*)oneOrMore:(ZKParser*)p separator:(ZKParser*)sep max:(NSUInteger)maxItems;
+-(ZKArrayParser*)zeroOrMore:(ZKParser*)p;
+-(ZKArrayParser*)oneOrMore:(ZKParser*)p;
+-(ZKArrayParser*)zeroOrMore:(ZKParser*)p separator:(ZKParser*)sep;
+-(ZKArrayParser*)oneOrMore:(ZKParser*)p separator:(ZKParser*)sep;
+-(ZKArrayParser*)zeroOrMore:(ZKParser*)p separator:(ZKParser*)sep max:(NSUInteger)maxItems;
+-(ZKArrayParser*)oneOrMore:(ZKParser*)p separator:(ZKParser*)sep max:(NSUInteger)maxItems;
 
--(ZKParser*)zeroOrOne:(ZKParser*)p;
--(ZKParser*)zeroOrOne:(ZKParser*)p ignoring:(BOOL(^)(NSObject*))ignoreBlock;
+-(ZKSingularParser*)zeroOrOne:(ZKParser*)p;
+-(ZKSingularParser*)zeroOrOne:(ZKParser*)p ignoring:(BOOL(^)(NSObject*))ignoreBlock;
 
 // Constructs a new Parser instance from the supplied block
--(ZKParser*)fromBlock:(ParseBlock)parser;
--(ZKParser*)fromBlock:(ParseBlock)parser mapper:(ResultMapper)m;
+-(ZKSingularParser*)fromBlock:(ParseBlock)parser;
+-(ZKSingularParser*)fromBlock:(ParseBlock)parser mapper:(ResultMapper)m;
 
 // Constucts a new parser that contains a reference to another parser. Can be used to
 // refer to as yet unconstructed parsers where there are circular or recursive definitions.
