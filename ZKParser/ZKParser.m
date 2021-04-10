@@ -620,4 +620,8 @@
     return [ZKParserBlock block:parser mapper:m];
 }
 
+-(ZKParserRef*)parserRef {
+    return [ZKParserRef new];
+}
+
 @end

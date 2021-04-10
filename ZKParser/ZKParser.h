@@ -114,4 +114,8 @@ typedef ParserResult *(^ParseBlock)(ZKParserInput*input,NSError **err);
 
 -(ZKParser*)map:(ZKParser*)p onMatch:(MapperBlock)block;
 
+// Constucts a new parser that contains a reference to another parser. Can be used to
+// refer to as yet unconstructed parsers where there are circular or recursive definitions.
+-(ZKParserRef*)parserRef;
+
 @end

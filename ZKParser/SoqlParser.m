@@ -134,7 +134,7 @@ ParserResult * pickVals(ParserResult*r) {
 
     // use parserRef so that we can set up the recursive decent for (...)
     // be careful not to use oneOf with it as that will recurse infinitly because it checks all branches.
-    ZKParserRef *exprList = [ZKParserRef new];
+    ZKParserRef *exprList = [f parserRef];
     ZKParser *parens = [f seq:@[[f eq:@"("], maybeWs, exprList, maybeWs, [f eq:@")"]] onMatch:pick(2)];
     ZKParser *andOr = [f seq:@[ws, [f oneOfTokens:@"AND OR"], ws] onMatch:pick(1)];
     exprList.parser = [f seq:@[[f firstOf:@[parens, baseExpr]], [f zeroOrOne:[f seq:@[andOr, exprList]]]] onMatch:^ParserResult*(ArrayParserResult*r) {
