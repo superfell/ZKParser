@@ -367,10 +367,9 @@
 @end
 
 @implementation ZKParserBlock
-+(instancetype)block:(ParseBlock)b mapper:(ResultMapper)m {
++(instancetype)block:(ParseBlock)b {
     ZKParserBlock *p = [ZKParserBlock new];
     p.parser = b;
-    p.mapper = m;
     return p;
 }
 
@@ -378,6 +377,9 @@
     return self.parser(i,err);
 }
 
+-(NSString *)description {
+    return [NSString stringWithFormat:@"[block:%p]", self.parser];
+}
 @end
 
 @implementation ZKParserFactory
@@ -512,7 +514,7 @@
 }
 
 -(ZKSingularParser*)fromBlock:(ParseBlock)parser {
-    return [ZKParserBlock block:parser mapper:nil];
+    return [ZKParserBlock block:parser];
 }
 
 -(ZKParserRef*)parserRef {
