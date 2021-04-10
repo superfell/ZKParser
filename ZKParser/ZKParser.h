@@ -37,16 +37,25 @@ typedef ParserResult *(^ArrayResultMapper)(ArrayParserResult *r);
 -(ParserResult *)parse:(ZKParserInput*)input error:(NSError **)err;
 @end
 
-@interface ZKParserOneOf : ZKParser
+// All parsers that return a single item should extend this.
+@interface ZKSingularParser : ZKParser
+// Sets the supplied mapper block, which will be called if the parse is successfull.
+// returns the parser to make it easer to chain onMatch calls to new parsers.
 -(instancetype)onMatch:(ResultMapper)block;
 @end
 
-@interface ZKParserSeq : ZKParser
+// All parsers that return an array of results should extend this.
+@interface ZKArrayParser: ZKParser
 -(instancetype)onMatch:(ArrayResultMapper)block;
 @end
 
-@interface ZKParserRepeat : ZKParser
--(instancetype)onMatch:(ArrayResultMapper)block;
+@interface ZKParserOneOf : ZKSingularParser
+@end
+
+@interface ZKParserSeq : ZKArrayParser
+@end
+
+@interface ZKParserRepeat : ZKArrayParser
 @end
 
 // ParserRef lets you pass a parser to another parser, and later
@@ -107,8 +116,6 @@ typedef ParserResult *(^ParseBlock)(ZKParserInput*input,NSError **err);
 // Constructs a new Parser instance from the supplied block
 -(ZKParser*)fromBlock:(ParseBlock)parser;
 -(ZKParser*)fromBlock:(ParseBlock)parser mapper:(ResultMapper)m;
-
--(ZKParser*)map:(ZKParser*)p onMatch:(ResultMapper)block;
 
 // Constucts a new parser that contains a reference to another parser. Can be used to
 // refer to as yet unconstructed parsers where there are circular or recursive definitions.

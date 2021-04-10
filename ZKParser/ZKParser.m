@@ -51,60 +51,55 @@
 
 @end
 
-@interface ZKParserExact : ZKParser
-@property (strong,nonatomic) NSString *match;
-@property (assign,nonatomic) ZKCaseSensitivity caseSensitivity;
-@property (strong,nonatomic) ResultMapper onMatch;
-@property (assign,nonatomic) BOOL returnValue;
+@interface ZKSingularParser()
+@property (copy,nonatomic) ResultMapper mapper;
 @end
 
-@interface ZKParserCharSet : ZKParser
+@interface ZKArrayParser()
+@property (copy,nonatomic) ArrayResultMapper mapper;
+@end
+
+@interface ZKParserExact : ZKSingularParser
+@property (strong,nonatomic) NSString *match;
+@property (assign,nonatomic) ZKCaseSensitivity caseSensitivity;
+@end
+
+@interface ZKParserCharSet : ZKSingularParser
 @property (strong,nonatomic) NSCharacterSet* charSet;
 @property (assign,nonatomic) NSUInteger minMatches;
 @property (strong,nonatomic) NSString *errorName;
-@property (assign,nonatomic) BOOL returnValue;
 @end
 
 @interface ZKParserNotCharSet : ZKParserCharSet
 @end
 
-@interface ZKParserFirstOf : ZKParser
-@property (strong,nonatomic) ResultMapper matchBlock;
+@interface ZKParserFirstOf : ZKSingularParser
 @property (strong,nonatomic) NSArray<ZKParser*>* items;
 @end
 
 @interface ZKParserOneOf()
-@property (strong,nonatomic) ResultMapper matchBlock;
 @property (strong,nonatomic) NSArray<ZKParser*>* items;
 @end
 
 @interface ZKParserSeq()
-@property (strong,nonatomic) ArrayResultMapper matchBlock;
 @property (strong,nonatomic) NSArray<ZKParser*>* items;
 @end
 
 @interface ZKParserRepeat()
 +(instancetype)repeated:(ZKParser*)p sep:(ZKParser*)sep min:(NSUInteger)min max:(NSUInteger)max;
-@property (strong,nonatomic) ArrayResultMapper matchBlock;
 @property (strong,nonatomic) ZKParser *parser;
 @property (strong,nonatomic) ZKParser *separator;
 @property (assign,nonatomic) NSUInteger min;
 @property (assign,nonatomic) NSUInteger max;
 @end
 
-@interface ZKParserOptional : ZKParser
+@interface ZKParserOptional : ZKSingularParser
 @property (strong,nonatomic) ZKParser *optional;
-@property (copy,nonatomic) BOOL(^ignoreBlock)(NSObject*);
+@property (copy,nonatomic) BOOL(^ignoreBlock)(NSObject*);   // is this the right places for this? seems like it should be on eq and/or charSet
 @end
 
-@interface ZKParserMapper : ZKParser
-@property (strong, nonatomic) ZKParser *inner;
-@property (strong, nonatomic) ResultMapper block;
-@end
-
-@interface ZKParserBlock : ZKParser
+@interface ZKParserBlock : ZKSingularParser
 @property (copy,nonatomic) ParseBlock parser;
-@property (strong, nonatomic) ResultMapper mapper;
 @end
 
 
@@ -116,27 +111,42 @@
 -(ParserResult *)parse:(ZKParserInput*)input error:(NSError **)err {
     // TODO add debug logging back in
     *err = nil;
+    NSInteger start = input.pos;
     ParserResult *r = [self parseImpl:input error:err];
+    if (*err != nil) {
+        [input rewindTo:start];
+    }
     return r;
 }
 
 @end
 
-@implementation ZKParserRef
-
--(ParserResult *)parseImpl:(ZKParserInput*)input error:(NSError **)err {
-    return [self.parser parse:input error:err];
+@implementation ZKSingularParser
+-(instancetype)onMatch:(ResultMapper)block {
+    self.mapper = block;
+    return self;
 }
-
+-(ParserResult *)parse:(ZKParserInput*)input error:(NSError **)err {
+    ParserResult *r = [super parse:input error:err];
+    if (*err == nil && self.mapper != nil) {
+        r = self.mapper(r);
+    }
+    return r;
+}
 @end
 
-@implementation ZKParserMapper
--(ParserResult *)parseImpl:(ZKParserInput*)input error:(NSError **)err {
-    ParserResult *res = [self.inner parse:input error:err];
-    if (*err == nil) {
-        return self.block(res);
+@implementation ZKArrayParser
+-(instancetype)onMatch:(ArrayResultMapper)block {
+    self.mapper = block;
+    return self;
+}
+-(ParserResult *)parse:(ZKParserInput*)input error:(NSError **)err {
+    ParserResult *r = [super parse:input error:err];
+    if (*err == nil && self.mapper != nil) {
+        assert([r isKindOfClass:[ArrayParserResult class]]);
+        r = self.mapper((ArrayParserResult*)r);
     }
-    return nil;
+    return r;
 }
 @end
 
@@ -146,8 +156,7 @@
     NSString *res = [input consumeString:self.match caseSensitive:self.caseSensitivity];
     if (res != nil) {
         NSRange pos = NSMakeRange(start, input.pos-start);
-        ParserResult *r = [ParserResult result:res loc:pos];
-        return self.onMatch == nil ? r : self.onMatch(r);
+        return [ParserResult result:res loc:pos];
     }
     *err = [NSError errorWithDomain:@"Parser"
                                code:2
@@ -159,7 +168,7 @@
 }
 
 -(NSString*)description {
-    return self.match;
+    return [NSString stringWithFormat:@"[eq: %@]", self.match];
 }
 
 @end
@@ -177,7 +186,6 @@
                                            NSLocalizedDescriptionKey:[NSString stringWithFormat:@"expecting %@ at position %lu", self.errorName, start+1],
                                            @"Position": @(start+1)
                                        }];
-                [input rewindTo:start];
                 return nil;
             }
             NSRange rng = NSMakeRange(start, count);
@@ -186,8 +194,9 @@
         count++;
     }
 }
+
 -(NSString *)description {
-    return [NSString stringWithFormat:@"{%@ x %lu}", self.errorName, self.minMatches];
+    return [NSString stringWithFormat:@"[%lu+ %@]", self.minMatches, self.errorName];
 }
 @end
 
@@ -198,7 +207,7 @@
 }
 
 -(NSString *)description {
-    return [NSString stringWithFormat:@"{!%@ x %lu}", self.errorName, self.minMatches];
+    return [NSString stringWithFormat:@"[%lu+ !%@]", self.minMatches, self.errorName];
 }
 @end
 
@@ -215,9 +224,6 @@
     for (ZKParser *child in self.items) {
         ParserResult *r = [child parse:input error:err];
         if (*err == nil) {
-            if (self.matchBlock != nil) {
-                r = self.matchBlock(r);
-            }
             return r;
         }
         [input rewindTo:start];
@@ -229,70 +235,53 @@
 @implementation ZKParserOneOf
 
 -(ParserResult *)parseImpl:(ZKParserInput*)input error:(NSError **)err {
-    ParserResult *res = [self parseInput:input error:err];
-    if (*err == nil && self.matchBlock != nil) {
-        return self.matchBlock(res);
-    }
-    return res;
-}
-
--(ParserResult *)parseInput:(ZKParserInput*)input error:(NSError **)err {
     NSUInteger start = input.pos;
     NSUInteger longestPos = start;
     ParserResult *longestRes = nil;
     NSError *childErr = nil;
+    BOOL success = FALSE;
     for (ZKParser *child in self.items) {
         ParserResult *r = [child parse:input error:&childErr];
-        if (input.pos > longestPos) {
+        if ((childErr == nil) && (input.pos > longestPos)) {
             longestRes = r;
             longestPos = input.pos;
-        } else {
-            if (childErr != nil && *err == nil) {
-                *err = childErr;
-            }
+            success = TRUE;
+        }
+        if (childErr != nil && *err == nil) {
+            *err = childErr;
         }
         [input rewindTo:start];
     }
-    if (longestPos > start) {
+    if (success) {
         *err = nil;
         [input rewindTo:longestPos];
     }
     return longestRes;
 }
 
--(ZKParserOneOf*)onMatch:(ResultMapper)block {
-    self.matchBlock = block;
-    return self;
+-(NSString*)description {
+    return [NSString stringWithFormat:@"[oneOf:%@]", self.items];
 }
 
 @end
 
 @implementation ZKParserSeq
+
 -(ParserResult *)parseImpl:(ZKParserInput*)input error:(NSError **)err {
     NSUInteger start = input.pos;
-    NSMutableArray *out = [NSMutableArray arrayWithCapacity:self.items.count];
+    NSMutableArray *results = [NSMutableArray arrayWithCapacity:self.items.count];
     for (ZKParser *child in self.items) {
         ParserResult *res = [child parse:input error:err];
         if (*err != nil) {
-            [input rewindTo:start];
             return nil;
         }
-        [out addObject:res];
+        [results addObject:res];
     }
-    ArrayParserResult *r = [ArrayParserResult result:out loc:NSMakeRange(start, input.pos-start)];
-    if (self.matchBlock != nil) {
-        return self.matchBlock(r);
-    }
-    return r;
-}
-
--(ZKParserSeq*)onMatch:(ArrayResultMapper)block {
-    self.matchBlock = block;
-    return self;
+    return [ArrayParserResult result:results loc:NSMakeRange(start, input.pos-start)];
 }
 
 -(NSString*)description {
-    return [self.items description];
+    return [NSString stringWithFormat:@"[seq:%@]", self.items];
 }
 
 @end
@@ -305,25 +294,17 @@
     r.separator = sep;
     r.min = min;
     r.max = max;
-    r.matchBlock = ^ParserResult *(ParserResult*r) {
-        return r;
-    };
     return r;
-}
-
--(ZKParserRepeat*)onMatch:(ArrayResultMapper)block {
-    self.matchBlock = block;
-    return self;
 }
 
 -(ParserResult *)parseImpl:(ZKParserInput*)input error:(NSError **)err {
     NSUInteger start = input.pos;
-    NSMutableArray<ParserResult*> *out = [NSMutableArray array];
+    NSMutableArray<ParserResult*> *results = [NSMutableArray array];
     NSError *nextError = nil;
     ParserResult *first = [self.parser parse:input error:&nextError];
     if (nextError == nil) {
-        [out addObject:first];
-        while (out.count < self.max) {
+        [results addObject:first];
+        while (results.count < self.max) {
             NSUInteger thisStart = input.pos;
             if (self.separator != nil) {
                 [self.separator parse:input error:&nextError];
@@ -337,20 +318,18 @@
                 [input rewindTo:thisStart];
                 break;
             }
-            [out addObject:next];
+            [results addObject:next];
         }
     }
-    if (out.count >= self.min) {
-        ArrayParserResult *r = [ArrayParserResult result:out loc:NSMakeRange(start, input.pos-start)];
-        return self.matchBlock(r);
+    if (results.count >= self.min) {
+        return [ArrayParserResult result:results loc:NSMakeRange(start, input.pos-start)];
     }
     *err = nextError;
-    [input rewindTo:start];
     return nil;
 }
 
 -(NSString *)description {
-    return [NSString stringWithFormat:@"{%lu}x%@", self.min, self.parser];
+    return [NSString stringWithFormat:@"[repeat{%lu,%lu} %@ %@}", self.min, self.max, self.parser, self.separator];
 }
 @end
 
@@ -370,7 +349,19 @@
 }
 
 -(NSString *)description {
-    return [NSString stringWithFormat:@"{%@}?" , self.optional];
+    return [NSString stringWithFormat:@"%@?" , self.optional];
+}
+
+@end
+
+@implementation ZKParserRef
+
+-(ParserResult *)parse:(ZKParserInput*)input error:(NSError **)err {
+    return [self.parser parse:input error:err];
+}
+
+-(NSString *)description {
+    return [NSString stringWithFormat:@"[ref:%@]", self.parser];
 }
 
 @end
@@ -384,29 +375,18 @@
 }
 
 -(ParserResult*)parseImpl:(ZKParserInput*)i error:(NSError**)err {
-    ParserResult *res = self.parser(i,err);
-    if (*err == nil && self.mapper != nil) {
-        res = self.mapper(res);
-    }
-    return res;
+    return self.parser(i,err);
 }
+
 @end
 
 @implementation ZKParserFactory
-
--(ZKParser*)map:(ZKParser*)p onMatch:(ResultMapper)block {
-    ZKParserMapper *m = [ZKParserMapper new];
-    m.inner = p;
-    m.block = block;
-    return m;
-}
 
 -(ZKParser*)exactly:(NSString *)s case:(ZKCaseSensitivity)c onMatch:(ResultMapper)block {
     ZKParserExact *e = [ZKParserExact new];
     e.match = s;
     e.caseSensitivity = c;
-    e.onMatch = block;
-    e.returnValue = YES;
+    e.mapper = block;
     return e;
 }
 
@@ -414,13 +394,11 @@
     return [self exactly:s case:c onMatch:nil];
 }
 
--(ZKParser*)exactly:(NSString *)s {
-    return [self exactly:s case:self.defaultCaseSensitivity];
-}
-
 -(ZKParser*)eq:(NSString *)s {
     return [self exactly:s case:self.defaultCaseSensitivity];
 }
+
+// setValue should be helper function instead? same as pick.
 -(ZKParser*)exactly:(NSString *)s setValue:(NSObject*)val {
     return [self exactly:s case:self.defaultCaseSensitivity onMatch:^ParserResult*(ParserResult*r) {
         r.val = val;
@@ -433,7 +411,6 @@
     w.charSet = [NSCharacterSet whitespaceCharacterSet];
     w.minMatches = 1;
     w.errorName = @"whitespace";
-    w.returnValue = NO;
     return w;
 }
 
@@ -442,7 +419,6 @@
     w.charSet = [NSCharacterSet whitespaceCharacterSet];
     w.minMatches = 0;
     w.errorName = @"whitespace";
-    w.returnValue = NO;
     return w;
 }
 
@@ -451,7 +427,6 @@
     w.charSet = set;
     w.errorName = name;
     w.minMatches = minMatches;
-    w.returnValue = YES;
     return w;
 }
 
@@ -460,7 +435,6 @@
     w.charSet = set;
     w.errorName = name;
     w.minMatches = minMatches;
-    w.returnValue = YES;
     return w;
 }
 
@@ -470,13 +444,13 @@
 
 -(ZKParser*)firstOf:(NSArray<ZKParser*>*)items onMatch:(ResultMapper)block {
     ZKParserFirstOf *p = [ZKParserFirstOf firstOf:items];
-    p.matchBlock = block;
+    p.mapper = block;
     return p;
 }
 
 -(ZKParser *)oneOfTokens:(NSString *)items {
     // although its called oneOf... we can use firstOf because all the tokens are unique, we sort them
-    // longest to shortest so that the longest one matches first.
+    // longest to shortest so that the longest match matches first.
     NSArray *list = [items componentsSeparatedByCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
     list = [list sortedArrayUsingComparator:^NSComparisonResult(id  _Nonnull a, id  _Nonnull b) {
         NSInteger alen = [a length];
@@ -488,13 +462,13 @@
         }
         return NSOrderedSame;
     }];
+    // TODO, there's lots more scope to make this more efficient
     NSMutableArray<ZKParser*> *parsers = [NSMutableArray arrayWithCapacity:list.count];
     for (NSString *s in list) {
         [parsers addObject:[self eq:s]];
     }
     return [self firstOf:parsers];
 }
-
 
 -(ZKParser*)oneOf:(NSArray<ZKParser*>*)items {
     ZKParserOneOf *o = [ZKParserOneOf new];
@@ -505,7 +479,7 @@
 -(ZKParser*)oneOf:(NSArray<ZKParser*>*)items onMatch:(ResultMapper)block {
     ZKParserOneOf *o = [ZKParserOneOf new];
     o.items = items;
-    o.matchBlock = block;
+    o.mapper = block;
     return o;
 }
 
@@ -518,7 +492,7 @@
 -(ZKParser*)seq:(NSArray<ZKParser*>*)items onMatch:(ArrayResultMapper)block {
     ZKParserSeq *s = [ZKParserSeq new];
     s.items = items;
-    s.matchBlock = block;
+    s.mapper = block;
     return s;
 }
 
