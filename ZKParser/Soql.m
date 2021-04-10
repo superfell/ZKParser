@@ -63,6 +63,8 @@ void append(NSMutableString *q, NSArray *a) {
 }
 @end
 
+@implementation Expr
+@end
 
 @implementation SelectField
 +(instancetype)name:(NSArray<PositionedString*>*)n loc:(NSRange)loc {
@@ -149,37 +151,27 @@ void append(NSMutableString *q, NSArray *a) {
 }
 @end
 
-@implementation Expr
-+(instancetype) leftF:(SelectField*)l op:(PositionedString*)op rightV:(LiteralValue*)right loc:(NSRange)loc {
-    Expr *e= [self new];
-    e.leftField = l;
+@implementation ComparisonExpr
++(instancetype) left:(SelectField*)left op:(PositionedString*)op right:(LiteralValue*)right loc:(NSRange)loc {
+    ComparisonExpr *e = [self new];
+    e.left = left;
     e.op = op;
+    e.op.val = [op.val uppercaseString];
     e.right = right;
     e.loc = loc;
     return e;
 }
+-(void)appendSoql:(NSMutableString *)dest {
+    [self.left appendSoql:dest];
+    [self.op appendSoql:dest];
+    [self.right appendSoql:dest];
+}
+@end
 
-+(instancetype) leftE:(Expr*)l op:(PositionedString*)op rightV:(LiteralValue*)right loc:(NSRange)loc {
-    Expr *e= [self new];
-    e.leftExpr = l;
-    e.op = op;
-    e.op.val = [op.val uppercaseString];
-    e.right = right;
-    e.loc = loc;
-    return e;
-}
-+(instancetype) leftF:(SelectField*)l op:(PositionedString*)op rightE:(Expr*)right loc:(NSRange)loc {
-    Expr *e= [self new];
-    e.leftField = l;
-    e.op = op;
-    e.op.val = [op.val uppercaseString];
-    e.rightExpr = right;
-    e.loc = loc;
-    return e;
-}
-+(instancetype) leftE:(Expr*)l op:(PositionedString*)op rightE:(Expr*)right loc:(NSRange)loc {
-    Expr *e= [self new];
-    e.leftExpr = l;
+@implementation OpAndOrExpr
++(instancetype) left:(Expr*)left op:(PositionedString*)op right:(Expr*)right loc:(NSRange)loc {
+    OpAndOrExpr *e = [self new];
+    e.leftExpr = left;
     e.op = op;
     e.op.val = [op.val uppercaseString];
     e.rightExpr = right;
@@ -188,19 +180,15 @@ void append(NSMutableString *q, NSArray *a) {
 }
 
 -(void)appendSoql:(NSMutableString *)dest {
-    if (self.leftField != nil) {
-        [dest appendString:@" "];
-        [self.leftField appendSoql:dest];
-    } else {
-        [self.leftExpr appendSoql:dest];
-    }
-    NSString *op = self.op.val;
-    if ([op isEqualToString:@"AND"] || [op isEqualToString:@"OR"]) {
-        [dest appendString:@" "];
-    }
+    [dest appendString:@"("];
+    [self.leftExpr appendSoql:dest];
+    [dest appendString:@" "];
     [self.op appendSoql:dest];
-    [self.right appendSoql:dest];
+    [dest appendString:@" "];
+    [self.rightExpr appendSoql:dest];
+    [dest appendString:@")"];
 }
+
 @end
 
 @implementation OrderBys
@@ -256,7 +244,7 @@ void append(NSMutableString *q, NSArray *a) {
         [dest appendFormat:@" USING SCOPE %@", self.filterScope.val];
     }
     if (self.where != nil) {
-        [dest appendString:@" WHERE"];
+        [dest appendString:@" WHERE "];
         [self.where appendSoql:dest];
     }
     [self.orderBy appendSoql:dest];

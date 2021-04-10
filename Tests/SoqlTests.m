@@ -15,6 +15,25 @@
 
 @end
 
+NSString *spaces(NSInteger count) {
+    NSMutableString *s = [NSMutableString stringWithCapacity:count];
+    while (count > 0) {
+        [s appendString:@" "];
+        count--;
+    }
+    return s;
+}
+
+void assertStringsEq(NSString *act, NSString *exp) {
+    if ([exp isEqualToString:act]) {
+        return;
+    }
+    NSString *same = [exp commonPrefixWithString:act options:(NSLiteralSearch)];
+    NSString *msg = [NSString stringWithFormat:@"Strings don't match starting at pos %lu\n%@\n%@%@\n",
+                     same.length, exp, spaces(same.length), [act substringFromIndex:same.length]];
+    XCTFail("%@", msg);
+}
+
 @implementation SoqlTests
 
 SoqlParser *p = nil;
@@ -82,50 +101,61 @@ SoqlParser *p = nil;
 -(void)testParenWhere {
     NSError *err = nil;
     SelectQuery *res = [p parse:@"select id from contact where (name='bob')" error:&err];
-    XCTAssertEqualObjects([res toSoql], @"SELECT id FROM contact WHERE name='bob'");
+    assertStringsEq([res toSoql], @"SELECT id FROM contact WHERE name='bob'");
     XCTAssertNil(err);
 }
 
--(void)testWHere {
+-(void)testWhereParenTerm {
+    NSError *err = nil;
+    SelectQuery *res = [p parse:@"select id from contact where (name = 'bob') or (name='alice' and city='SF')" error:&err];
+    assertStringsEq([res toSoql], @"SELECT id FROM contact WHERE (name='bob' OR (name='alice' AND city='SF'))");
+    XCTAssertNil(err);
+}
+
+-(void)testWhere {
     NSError *err = nil;
     SelectQuery *res = [p parse:@"select id from contact where name = 'bob'" error:&err];
-    XCTAssertEqualObjects([res toSoql], @"SELECT id FROM contact WHERE name='bob'");
+    assertStringsEq([res toSoql], @"SELECT id FROM contact WHERE name='bob'");
     XCTAssertNil(err);
     
     res = [p parse:@"select id from contact where name = 'bob' or name='alice'" error:&err];
-    XCTAssertEqualObjects([res toSoql], @"SELECT id FROM contact WHERE name='bob' OR name='alice'");
+    assertStringsEq([res toSoql], @"SELECT id FROM contact WHERE (name='bob' OR name='alice')");
     XCTAssertNil(err);
 
     res = [p parse:@"select id from contact where name = 'bob' or name='alice' and city='SF'" error:&err];
-    XCTAssertEqualObjects([res toSoql], @"SELECT id FROM contact WHERE name='bob' OR name='alice' AND city='SF'");
+    assertStringsEq([res toSoql], @"SELECT id FROM contact WHERE (name='bob' OR (name='alice' AND city='SF'))");
     XCTAssertNil(err);
 
     res = [p parse:@"select id from contact where (name='bob')" error:&err];
-    XCTAssertEqualObjects([res toSoql], @"SELECT id FROM contact WHERE name='bob' OR name='alice' AND city='SF'");
+    assertStringsEq([res toSoql], @"SELECT id FROM contact WHERE name='bob'");
     XCTAssertNil(err);
 
-    res = [p parse:@"select id from contact where (name = 'bob' or name='alice' and city='SF')" error:&err];
-    XCTAssertEqualObjects([res toSoql], @"SELECT id FROM contact WHERE name='bob' OR name='alice' AND city='SF'");
+    res = [p parse:@"select id from contact where (name = 'bob' or name='alice' andcity='SF')" error:&err];
+    assertStringsEq([res toSoql], @"SELECT id FROM contact WHERE (name='bob' OR (name='alice' AND city='SF'))");
+    XCTAssertNil(err);
+
+    res = [p parse:@"select id from contact where ( name = 'bob' or name='alice' and city='SF'  )" error:&err];
+    assertStringsEq([res toSoql], @"SELECT id FROM contact WHERE (name='bob' OR (name='alice' AND city='SF'))");
     XCTAssertNil(err);
 
     res = [p parse:@"select id from contact where name = 'bob' or (name='alice' and city='SF')" error:&err];
-    XCTAssertEqualObjects([res toSoql], @"SELECT id FROM contact WHERE name='bob' OR name='alice' AND city='SF'");
+    assertStringsEq([res toSoql], @"SELECT id FROM contact WHERE (name='bob' OR (name='alice' AND city='SF'))");
     XCTAssertNil(err);
 
-    res = [p parse:@"select id from contact where (name = 'bob' or name='alice' and city='SF')" error:&err];
-    XCTAssertEqualObjects([res toSoql], @"SELECT id FROM contact WHERE name='bob' OR name='alice' AND city='SF'");
+    res = [p parse:@"select id from contact where (name = 'bob' or name='alice') and city='SF'" error:&err];
+    assertStringsEq([res toSoql], @"SELECT id FROM contact WHERE ((name='bob' OR name='alice') AND city='SF')");
     XCTAssertNil(err);
 
     res = [p parse:@"select id from contact where (name = 'bob') or (name='alice' and city='SF')" error:&err];
-    XCTAssertEqualObjects([res toSoql], @"SELECT id FROM contact WHERE name='bob' OR name='alice' AND city='SF'");
+    assertStringsEq([res toSoql], @"SELECT id FROM contact WHERE (name='bob' OR (name='alice' AND city='SF'))");
     XCTAssertNil(err);
 
     res = [p parse:@"select id from contact where (name = 'bob') or (((name='alice' and city='SF')))" error:&err];
-    XCTAssertEqualObjects([res toSoql], @"SELECT id FROM contact WHERE name='bob' OR name='alice' AND city='SF'");
+    assertStringsEq([res toSoql], @"SELECT id FROM contact WHERE (name='bob' OR (name='alice' AND city='SF'))");
     XCTAssertNil(err);
 
     res = [p parse:@"select id from contact where ((name = 'bob' or name='alice') and city='SF')" error:&err];
-    XCTAssertEqualObjects([res toSoql], @"SELECT id FROM contact WHERE name='bob' OR name='alice' AND city='SF'");
+    assertStringsEq([res toSoql], @"SELECT id FROM contact WHERE ((name='bob' OR name='alice') AND city='SF')");
     XCTAssertNil(err);
 }
 

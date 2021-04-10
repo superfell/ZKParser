@@ -38,6 +38,29 @@ ParserResult * pickVals(ParserResult*r) {
     return r;
 }
 
+@interface OneOfOrd : ZKParser
+@property (strong,nonatomic) NSArray<ZKParser*>* items;
+@end
+@implementation OneOfOrd
++(ZKParser*)oneOfOrd:(NSArray<ZKParser*>*)opts {
+    OneOfOrd *p = [OneOfOrd new];
+    p.items = opts;
+    return p;
+}
+
+-(ParserResult *)parseImpl:(ZKParserInput*)input error:(NSError **)err {
+    NSUInteger start = input.pos;
+    for (ZKParser *child in self.items) {
+        ParserResult *r = [child parse:input error:err];
+        if (*err == nil) {
+            return r;
+        }
+        [input rewindTo:start];
+    }
+    return nil;
+}
+@end
+
 @interface SoqlParser()
 @property (strong,nonatomic) ZKParser *parser;
 @end
@@ -142,64 +165,31 @@ ParserResult * pickVals(ParserResult*r) {
         return r;
     }];
     ZKParser *baseExpr = [f seq:@[field, maybeWs, operator, maybeWs, literalValue] onMatch:^ParserResult *(ArrayParserResult *r) {
-        Expr *e = [Expr leftF:r.child[0].val op:[r.child[2] posString] rightV:r.child[4].val loc:r.loc];
-        r.val = e;
+        r.val = [ComparisonExpr left:r.child[0].val op:[r.child[2] posString] right:r.child[4].val loc:r.loc];
         return r;
     }];
     baseExpr.debugName = @"baseExpr";
 
-    ZKParser *andOr = [f oneOfFromString:@"AND OR"];
-    ZKParser *baseExprList = [f seq:@[baseExpr, [f zeroOrMore:[f seq:@[ws, andOr, ws, baseExpr]]]] onMatch:^ParserResult *(ArrayParserResult *r) {
-        Expr *e = r.child[0].val;
-        for (ArrayParserResult *next in r.child[1].val) {
-            PositionedString *op = [next.child[1] posString];
-            LiteralValue *v = next.child[3].val;
-            e = [Expr leftE:e op:op rightV:v loc:next.loc];
-        }
-        r.val = e;
-        return r;
-    }];
-    baseExprList.debugName = @"innerBaseExprList";
-    ZKParser *parenticalBaseExprList = [f seq:@[[f eq:@"("], baseExprList, [f eq:@")"]] onMatch:pick(1)];
-    parenticalBaseExprList.debugName = @"parenticalBaseExprList";
-    baseExprList = [f oneOf:@[baseExprList, parenticalBaseExprList]];
-    baseExprList.debugName = @"baseExprList";
-    
-    ZKParser *andOr1 = [f seq:@[baseExpr, [f zeroOrMore:[f seq:@[ws, andOr, ws, baseExprList]]]] onMatch:^ParserResult *(ArrayParserResult *r) {
-        Expr *e = r.child[0].val;
-        for (ArrayParserResult *next in r.child[1].val) {
-            PositionedString *op = [next.child[1] posString];
-            Expr *right = next.child[3].val;
-            e = [Expr leftE:e op:op rightE:right loc:next.loc];
-        }
-        r.val = e;
-        return r;
-    }];
-    ZKParser *andOr2 = [f seq:@[baseExprList, [f zeroOrMore:[f seq:@[ws, andOr, ws, baseExprList]]]] onMatch:^ParserResult *(ArrayParserResult *r) {
-        Expr *e = r.child[0].val;
-        for (ArrayParserResult *next in r.child[1].val) {
-            PositionedString *op = [next.child[1] posString];
-            Expr *right = next.child[3].val;
-            e = [Expr leftE:e op:op rightE:right loc:next.loc];
-        }
-        r.val = e;
-        return r;
-    }];
-    ZKParser *andOr3 = [f seq:@[baseExprList, [f zeroOrMore:[f seq:@[ws, andOr, ws, baseExpr]]]] onMatch:^ParserResult *(ArrayParserResult *r) {
-        Expr *e = r.child[0].val;
-        for (ArrayParserResult *next in r.child[1].val) {
-            PositionedString *op = [next.child[1] posString];
-            Expr *right = next.child[3].val;
-            e = [Expr leftE:e op:op rightE:right loc:next.loc];
-        }
-        r.val = e;
-        return r;
-    }];
 
-    ZKParser *rootExprList = [f oneOf:@[andOr1, andOr2, andOr3]];
+    // use parserRef so that we can set up the recursive decent for (...)
+    // be careful not to use oneOf with it as that will recurse infinitly because it checks all branches.
+    ZKParserRef *exprList = [ZKParserRef new];
+    ZKParser *parens = [f seq:@[[f eq:@"("], maybeWs, exprList, maybeWs, [f eq:@")"]] onMatch:pick(2)];
+    ZKParser *andOr = [f seq:@[ws,[f oneOfFromString:@"AND OR"],ws] onMatch:pick(1)];
+    exprList.parser = [f seq:@[[OneOfOrd oneOfOrd:@[parens, baseExpr]], [f zeroOrOne:[f seq:@[andOr, exprList]]]] onMatch:^ParserResult*(ArrayParserResult*r) {
+        Expr *left = r.child[0].val;
+        if ([r childIsNull:1]) {
+            r.val = left;
+            return r;
+        }
+        ArrayParserResult *rhs = (ArrayParserResult *)r.child[1];
+        PositionedString *op = [rhs.child[0] posString];
+        Expr *right = rhs.child[1].val;
+        r.val = [OpAndOrExpr left:left op:op right:right loc:r.loc];
+        return r;
+    }];
     
-    ZKParser *where = [f zeroOrOne:[f seq:@[ws,[f eq:@"WHERE"], ws, rootExprList] onMatch:pick(3)]];
-    where.debugName = @"Where";
+    ZKParser *where = [f zeroOrOne:[f seq:@[ws,[f eq:@"WHERE"], ws, exprList] onMatch:pick(3)]];
     
     /// FILTER SCOPE
     ZKParser *filterScope = [f zeroOrOne:[[ws then:@[[f eq:@"USING"], ws, [f eq:@"SCOPE"], ws, ident]] onMatch:pick(5)]];

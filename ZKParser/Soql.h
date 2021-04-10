@@ -25,7 +25,10 @@
 @property (readonly) NSInteger length;
 @end
 
-@interface SelectField : AstNode
+@interface Expr : AstNode
+@end
+
+@interface SelectField : Expr
 +(instancetype)name:(NSArray<PositionedString*>*)n alias:(PositionedString*)alias loc:(NSRange)loc;
 @property (strong,nonatomic) NSArray<PositionedString*> *name;
 @property (strong,nonatomic) PositionedString *alias;
@@ -50,19 +53,21 @@
 @property (strong,nonatomic) NSArray<SelectField*>* relatedObjects;
 @end
 
-@interface LiteralValue : AstNode
+@interface LiteralValue : Expr
 @property (strong,nonatomic) PositionedString *val; // TODO
 @end
 
-@interface Expr : AstNode
-+(instancetype) leftF:(SelectField*)l op:(PositionedString*)op rightV:(LiteralValue*)right loc:(NSRange)loc;
-+(instancetype) leftE:(Expr*)l op:(PositionedString*)op rightV:(LiteralValue*)right loc:(NSRange)loc;
-+(instancetype) leftF:(SelectField*)l op:(PositionedString*)op rightE:(Expr*)right loc:(NSRange)loc;
-+(instancetype) leftE:(Expr*)l op:(PositionedString*)op rightE:(Expr*)right loc:(NSRange)loc;
-@property (strong,nonatomic) SelectField *leftField;
-@property (strong,nonatomic) Expr *leftExpr;
+@interface ComparisonExpr : Expr
++(instancetype) left:(SelectField*)left op:(PositionedString*)op right:(LiteralValue*)right loc:(NSRange)loc;
+@property (strong,nonatomic) SelectField *left;
 @property (assign,nonatomic) PositionedString *op;
 @property (strong,nonatomic) LiteralValue *right;
+@end
+
+@interface OpAndOrExpr : Expr
++(instancetype) left:(Expr*)l op:(PositionedString*)op right:(Expr*)right loc:(NSRange)loc;
+@property (strong,nonatomic) Expr *leftExpr;
+@property (assign,nonatomic) PositionedString *op;
 @property (strong,nonatomic) Expr *rightExpr;
 @end
 
