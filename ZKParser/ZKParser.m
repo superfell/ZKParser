@@ -131,26 +131,6 @@
     return r;
 }
 
--(ZKParserOneOf*)or:(NSArray<ZKParser*>*)otherParsers {
-    ZKParserOneOf *o = [ZKParserOneOf new];
-    o.items = [@[self] arrayByAddingObjectsFromArray:otherParsers];
-    return o;
-}
-
--(ZKParserSeq*)then:(NSArray<ZKParser*>*)otherParsers {
-    ZKParserSeq *s = [ZKParserSeq new];
-    s.items = [@[self] arrayByAddingObjectsFromArray:otherParsers];
-    return s;
-}
-
--(ZKParserSeq*)thenZeroOrMore:(ZKParser*)parser {
-    return [self then:@[[ZKParserRepeat repeated:parser sep:nil min:0 max:NSUIntegerMax]]];
-}
-
--(ZKParserSeq*)thenOneOrMore:(ZKParser*)parser {
-    return [self then:@[[ZKParserRepeat repeated:parser sep:nil min:1 max:NSUIntegerMax]]];
-}
-
 @end
 
 @implementation ZKParserRef
@@ -291,14 +271,6 @@
     return longestRes;
 }
 
--(ZKParserOneOf*)or:(NSArray<ZKParser*>*)otherParsers {
-    if (self.matchBlock == nil) {
-        self.items = [self.items arrayByAddingObjectsFromArray:otherParsers];
-        return self;
-    }
-    return [super or:otherParsers];
-}
-
 -(ZKParserOneOf*)onMatch:(MapperBlock)block {
     self.matchBlock = block;
     return self;
@@ -328,14 +300,6 @@
 -(ZKParserSeq*)onMatch:(ArrayMapperBlock)block {
     self.matchBlock = block;
     return self;
-}
-
--(ZKParserSeq*)then:(NSArray<ZKParser*>*)otherParsers {
-    if (self.matchBlock == nil) {
-        self.items = [self.items arrayByAddingObjectsFromArray:otherParsers];
-        return self;
-    }
-    return [super then:otherParsers];
 }
 
 -(NSString*)description {
