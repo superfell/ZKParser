@@ -490,7 +490,7 @@
     }];
     NSMutableArray<ZKParser*> *parsers = [NSMutableArray arrayWithCapacity:list.count];
     for (NSString *s in list) {
-        [parsers addObject:[self exactly:s]];
+        [parsers addObject:[self eq:s]];
     }
     return [self firstOf:parsers];
 }

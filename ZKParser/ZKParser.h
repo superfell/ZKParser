@@ -42,11 +42,11 @@ typedef ParserResult *(^ArrayResultMapper)(ArrayParserResult *r);
 @end
 
 @interface ZKParserSeq : ZKParser
--(ZKParserSeq*)onMatch:(ArrayResultMapper)block;
+-(instancetype)onMatch:(ArrayResultMapper)block;
 @end
 
 @interface ZKParserRepeat : ZKParser
--(ZKParserSeq*)onMatch:(ArrayResultMapper)block;
+-(instancetype)onMatch:(ArrayResultMapper)block;
 @end
 
 // ParserRef lets you pass a parser to another parser, and later
@@ -62,18 +62,22 @@ typedef ParserResult *(^ParseBlock)(ZKParserInput*input,NSError **err);
 
 @property(assign,nonatomic) ZKCaseSensitivity defaultCaseSensitivity;
 
+/// 1 or more whitespace characters
 -(ZKParser*)whitespace;
+/// 0 or more whitespace characters
 -(ZKParser*)maybeWhitespace;
--(ZKParser*)eq:(NSString *)s;         // same as exactly. case sensitive set by defaultCaseSensitivity
--(ZKParser*)exactly:(NSString *)s;    // case sensitive set by defaultCaseSensitivity
+
+/// Exact match. Case sensitive set by defaultCaseSensitivity
+-(ZKParser*)eq:(NSString *)s;
 -(ZKParser*)exactly:(NSString *)s setValue:(NSObject*)val;    // case sensitive set by defaultCaseSensitivity
+
 -(ZKParser*)exactly:(NSString *)s case:(ZKCaseSensitivity)c;
 -(ZKParser*)exactly:(NSString *)s case:(ZKCaseSensitivity)c onMatch:(ResultMapper)block;
 
-// match 0 or more consecutive characters that are in the character set.
+// match 'min' or more consecutive characters that are in the character set.
 -(ZKParser*)characters:(NSCharacterSet*)set name:(NSString *)name min:(NSUInteger)minMatches;
 
-// match 0 or more consecutive characters not in the supplied character set.
+// match 'min' or more consecutive characters that are not in the supplied character set.
 -(ZKParser*)notCharacters:(NSCharacterSet*)set name:(NSString *)name min:(NSUInteger)minMatches;
 
 -(ZKParserSeq*)seq:(NSArray<ZKParser*>*)items;
