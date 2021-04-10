@@ -32,6 +32,18 @@
 typedef ParserResult *(^ResultMapper)(ParserResult *r);
 typedef ParserResult *(^ArrayResultMapper)(ArrayParserResult *r);
 
+// These are some common result Mapper's you can use to ease parser construction
+
+// returns a mapper that will select a single item as the result for an array result.
+ArrayResultMapper pick(NSUInteger idx);
+
+// a mapper that will replace the child ParserResult with their value.
+ParserResult * pickVals(ArrayParserResult*r);
+
+// returns a mapper that will set the results value to a specific value. Useful for
+// mapping tokens to AST specific types
+ResultMapper setValue(NSObject *val);
+
 
 @interface ZKParser : NSObject
 -(ParserResult *)parse:(ZKParserInput*)input error:(NSError **)err;
@@ -69,8 +81,6 @@ typedef ParserResult *(^ParseBlock)(ZKParserInput*input,NSError **err);
 
 /// Exact match. Case sensitive set by defaultCaseSensitivity
 -(ZKSingularParser*)eq:(NSString *)s;
--(ZKSingularParser*)exactly:(NSString *)s setValue:(NSObject*)val;    // case sensitive set by defaultCaseSensitivity
-
 -(ZKSingularParser*)exactly:(NSString *)s case:(ZKCaseSensitivity)c;
 
 // match 'min' or more consecutive characters that are in the character set.

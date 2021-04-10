@@ -30,6 +30,7 @@
 @end
 
 @implementation ArrayParserResult
+
 +(instancetype)result:(NSArray<ParserResult*>*)val loc:(NSRange)loc {
     ArrayParserResult *r = [ArrayParserResult new];
     r.val = val;
@@ -50,6 +51,25 @@
 }
 
 @end
+
+ArrayResultMapper pick(NSUInteger idx) {
+    return ^ParserResult *(ArrayParserResult *r) {
+        return r.val[idx];
+    };
+}
+
+ParserResult * pickVals(ArrayParserResult*r) {
+    r.val = [r childVals];
+    return r;
+}
+
+ResultMapper setValue(NSObject *val) {
+    return ^ParserResult *(ParserResult *r) {
+        r.val = val;
+        return r;
+    };
+}
+
 
 @interface ZKSingularParser()
 @property (copy,nonatomic) ResultMapper mapper;
@@ -393,14 +413,6 @@
 
 -(ZKSingularParser*)eq:(NSString *)s {
     return [self exactly:s case:self.defaultCaseSensitivity];
-}
-
-// setValue should be helper function instead? same as pick.
--(ZKSingularParser*)exactly:(NSString *)s setValue:(NSObject*)val {
-    return [[self exactly:s case:self.defaultCaseSensitivity] onMatch:^ParserResult*(ParserResult*r) {
-        r.val = val;
-        return r;
-    }];
 }
 
 -(ZKSingularParser*)whitespace {

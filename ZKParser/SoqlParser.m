@@ -16,17 +16,6 @@
 }
 @end
 
-ResultMapper pick(NSUInteger idx) {
-    return ^ParserResult *(ParserResult *m) {
-        return m.val[idx];
-    };
-}
-
-ParserResult * pickVals(ParserResult*r) {
-    r.val = [r.val valueForKey:@"val"];
-    return r;
-}
-
 @interface SoqlParser()
 @property (strong,nonatomic) ZKParser *parser;
 @end
@@ -155,11 +144,11 @@ ParserResult * pickVals(ParserResult*r) {
 
     
     /// ORDER BY
-    ZKParser *asc  = [f exactly:@"ASC" setValue:@YES];
-    ZKParser *desc = [f exactly:@"DESC" setValue:@NO];
+    ZKParser *asc  = [[f eq:@"ASC"] onMatch:setValue(@YES)];
+    ZKParser *desc = [[f eq:@"DESC"] onMatch:setValue(@NO)];
     ZKParser *ascDesc = [[f seq:@[ws, [f oneOf:@[asc,desc]]]] onMatch:pick(1)];
     ZKParser *nulls = [[f seq:@[ws, [f eq:@"NULLS"], ws,
-                               [f oneOf:@[[f exactly:@"FIRST" setValue:@(NullsFirst)], [f exactly:@"LAST" setValue:@(NullsLast)]]]]]
+                                [f oneOf:@[[[f eq:@"FIRST"] onMatch:setValue(@(NullsFirst))], [[f eq:@"LAST"] onMatch:setValue(@(NullsLast))]]]]]
                      onMatch:pick(3)];
     ZKParser *orderByField = [[f seq:@[field, [f zeroOrOne:ascDesc], [f zeroOrOne:nulls]]] onMatch:^ParserResult*(ArrayParserResult*m) {
         BOOL asc = YES;
