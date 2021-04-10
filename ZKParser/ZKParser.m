@@ -404,7 +404,7 @@ ResultMapper setValue(NSObject *val) {
 
 @implementation ZKParserFactory
 
--(ZKSingularParser*)exactly:(NSString *)s case:(ZKCaseSensitivity)c {
+-(ZKSingularParser*)eq:(NSString *)s case:(ZKCaseSensitivity)c {
     ZKParserExact *e = [ZKParserExact new];
     e.match = s;
     e.caseSensitivity = c;
@@ -412,7 +412,7 @@ ResultMapper setValue(NSObject *val) {
 }
 
 -(ZKSingularParser*)eq:(NSString *)s {
-    return [self exactly:s case:self.defaultCaseSensitivity];
+    return [self eq:s case:self.defaultCaseSensitivity];
 }
 
 -(ZKSingularParser*)whitespace {

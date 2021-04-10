@@ -81,7 +81,7 @@ typedef ParserResult *(^ParseBlock)(ZKParserInput*input,NSError **err);
 
 /// Exact match. Case sensitive set by defaultCaseSensitivity
 -(ZKSingularParser*)eq:(NSString *)s;
--(ZKSingularParser*)exactly:(NSString *)s case:(ZKCaseSensitivity)c;
+-(ZKSingularParser*)eq:(NSString *)s case:(ZKCaseSensitivity)c;
 
 // match 'min' or more consecutive characters that are in the character set.
 -(ZKSingularParser*)characters:(NSCharacterSet*)set name:(NSString *)name min:(NSUInteger)minMatches;
@@ -89,6 +89,7 @@ typedef ParserResult *(^ParseBlock)(ZKParserInput*input,NSError **err);
 // match 'min' or more consecutive characters that are not in the supplied character set.
 -(ZKSingularParser*)notCharacters:(NSCharacterSet*)set name:(NSString *)name min:(NSUInteger)minMatches;
 
+// match the supplied sequence of parsers.
 -(ZKArrayParser*)seq:(NSArray<ZKParser*>*)items;
 
 // selects the first item from the list that matches
