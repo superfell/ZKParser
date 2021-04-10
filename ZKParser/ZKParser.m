@@ -533,6 +533,28 @@
     return p;
 }
 
+-(ZKParser *)oneOfTokens:(NSString *)items {
+    // although its called oneOf... we can use firstOf because all the tokens are unique, we sort them
+    // longest to shortest so that the longest one matches first.
+    NSArray *list = [items componentsSeparatedByCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
+    list = [list sortedArrayUsingComparator:^NSComparisonResult(id  _Nonnull a, id  _Nonnull b) {
+        NSInteger alen = [a length];
+        NSInteger blen = [b length];
+        if (alen < blen) {
+            return NSOrderedDescending;
+        } else if (blen < alen) {
+            return NSOrderedAscending;
+        }
+        return NSOrderedSame;
+    }];
+    NSMutableArray<ZKParser*> *parsers = [NSMutableArray arrayWithCapacity:list.count];
+    for (NSString *s in list) {
+        [parsers addObject:[self exactly:s]];
+    }
+    return [self firstOf:parsers];
+}
+
+
 -(ZKParser*)oneOf:(NSArray<ZKParser*>*)items {
     ZKParserOneOf *o = [ZKParserOneOf new];
     o.items = items;

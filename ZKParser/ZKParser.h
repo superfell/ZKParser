@@ -93,6 +93,9 @@ typedef ParserResult *(^ParseBlock)(ZKParserInput*input,NSError **err);
 -(ZKParser*)firstOf:(NSArray<ZKParser*>*)items;
 -(ZKParser*)firstOf:(NSArray<ZKParser*>*)items onMatch:(MapperBlock)block;
 
+// tokens is a whitespace separated list of tokens, returns the matching token.
+-(ZKParser*)oneOfTokens:(NSString *)tokens;
+
 // selects the item from the list that has the longest match, all items are evaluated.
 -(ZKParserOneOf*)oneOf:(NSArray<ZKParser*>*)items;
 -(ZKParserOneOf*)oneOf:(NSArray<ZKParser*>*)items onMatch:(MapperBlock)block;

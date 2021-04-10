@@ -10,17 +10,6 @@
 #import "Soql.h"
 #import "ZKParser.h"
 
-@implementation ZKParserFactory (Soql)
--(ZKParser *)oneOfFromString:(NSString *)items {
-    NSArray *list = [items componentsSeparatedByCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
-    NSMutableArray<ZKParser*> *parsers = [NSMutableArray arrayWithCapacity:list.count];
-    for (NSString *s in list) {
-        [parsers addObject:[self exactly:s]];
-    }
-    return [self oneOf:parsers];
-}
-@end
-
 @implementation ParserResult (Soql)
 -(PositionedString*)posString {
     return [PositionedString from:self];
@@ -76,7 +65,7 @@ ParserResult * pickVals(ParserResult*r) {
     // SELECT LIST
     ZKParser *alias = [f zeroOrOne:[f seq:@[ws, ident] onMatch:pick(1)] ignoring:ignoreKeywords];
     ZKParser* field = [f seq:@[[f oneOrMore:ident separator:[f eq:@"."]], alias] onMatch:^ParserResult *(ArrayParserResult *m) {
-        m.val = [SelectField name:[PositionedString fromArray:[m.child[0] valueForKey:@"val"]]
+        m.val = [SelectField name:[PositionedString fromArray:m.child[0].val]
                             alias:([m childIsNull:1] ? nil : [m.child[1] posString])
                               loc:m.loc];
         return m;
@@ -98,7 +87,7 @@ ParserResult * pickVals(ParserResult*r) {
         return m;
     }];
     
-    ZKParser* selectExpr = [field or:@[func]];
+    ZKParser* selectExpr = [f oneOf:@[field, func]];
     ZKParser* selectExprs = [[f oneOrMore:selectExpr separator:commaSep] onMatch:^ParserResult *(ArrayParserResult *r) {
         r.val = r.childVals;
         return r;
@@ -109,22 +98,18 @@ ParserResult * pickVals(ParserResult*r) {
         r.val =@[[SelectFunc name:[r.child[0] posString] args:@[] alias:nil loc:r.loc]];
         return r;
     }];
-    selectExprs = [selectExprs or:@[countOnly]];
+    selectExprs = [f oneOf:@[selectExprs, countOnly]];
 
     /// FROM
-    ZKParser *objectRef = [f seq:@[ident, [f zeroOrOne:[f seq:@[ws, ident] onMatch:pick(1)] ignoring:ignoreKeywords]]
-                         onMatch:^ParserResult *(ArrayParserResult *m) {
-
+    ZKParser *objectRef = [f seq:@[ident, alias] onMatch:^ParserResult *(ArrayParserResult *m) {
         m.val = [SObjectRef name:m.child[0].posString
                            alias:[m childIsNull:1] ? nil : m.child[1].posString
                              loc:m.loc];
         return m;
     }];
-    ZKParser *objectRefs = [f seq:@[objectRef,
-                                [f zeroOrOne:[f seq:@[commaSep,
-                                                      [f oneOrMore:field separator:commaSep]] onMatch:pick(1)]]]
+    ZKParser *objectRefs = [f seq:@[objectRef, [f zeroOrOne:
+                                [f seq:@[commaSep, [f oneOrMore:field separator:commaSep]] onMatch:pick(1)]]]
                           onMatch:^ParserResult *(ArrayParserResult*r) {
-
         r.val = [From sobject:r.child[0].val
                       related:[r childIsNull:1] ? @[] : [r.child[1].val valueForKey:@"val"]
                           loc:r.loc];
@@ -132,7 +117,7 @@ ParserResult * pickVals(ParserResult*r) {
     }];
     
     /// WHERE
-    ZKParser *operator = [f oneOfFromString:@"< <= > >= = != LIKE IN NOT INCLUDES EXCLUDES"];
+    ZKParser *operator = [f oneOfTokens:@"< <= > >= = != LIKE IN NOT INCLUDES EXCLUDES"];
     NSCharacterSet *charSetQuote = [NSCharacterSet characterSetWithCharactersInString:@"'"];
     ZKParser *literalValue = [f seq:@[[f eq:@"'"], [f notCharacters:charSetQuote name:@"literal" min:1], [f eq:@"'"]] onMatch:^ParserResult *(ArrayParserResult *r) {
         LiteralValue *v = [LiteralValue new];
@@ -145,14 +130,13 @@ ParserResult * pickVals(ParserResult*r) {
         r.val = [ComparisonExpr left:r.child[0].val op:[r.child[2] posString] right:r.child[4].val loc:r.loc];
         return r;
     }];
-    baseExpr.debugName = @"baseExpr";
 
 
     // use parserRef so that we can set up the recursive decent for (...)
     // be careful not to use oneOf with it as that will recurse infinitly because it checks all branches.
     ZKParserRef *exprList = [ZKParserRef new];
     ZKParser *parens = [f seq:@[[f eq:@"("], maybeWs, exprList, maybeWs, [f eq:@")"]] onMatch:pick(2)];
-    ZKParser *andOr = [f seq:@[ws, [f oneOfFromString:@"AND OR"], ws] onMatch:pick(1)];
+    ZKParser *andOr = [f seq:@[ws, [f oneOfTokens:@"AND OR"], ws] onMatch:pick(1)];
     exprList.parser = [f seq:@[[f firstOf:@[parens, baseExpr]], [f zeroOrOne:[f seq:@[andOr, exprList]]]] onMatch:^ParserResult*(ArrayParserResult*r) {
         Expr *left = r.child[0].val;
         if ([r childIsNull:1]) {
@@ -165,11 +149,10 @@ ParserResult * pickVals(ParserResult*r) {
         r.val = [OpAndOrExpr left:left op:op right:right loc:r.loc];
         return r;
     }];
-    
-    ZKParser *where = [f zeroOrOne:[f seq:@[ws,[f eq:@"WHERE"], ws, exprList] onMatch:pick(3)]];
+    ZKParser *where = [f zeroOrOne:[f seq:@[ws ,[f eq:@"WHERE"], ws, exprList] onMatch:pick(3)]];
     
     /// FILTER SCOPE
-    ZKParser *filterScope = [f zeroOrOne:[[ws then:@[[f eq:@"USING"], ws, [f eq:@"SCOPE"], ws, ident]] onMatch:pick(5)]];
+    ZKParser *filterScope = [f zeroOrOne:[f seq:@[ws, [f eq:@"USING"], ws, [f eq:@"SCOPE"], ws, ident] onMatch:pick(5)]];
 
     
     /// ORDER BY
@@ -188,13 +171,12 @@ ParserResult * pickVals(ParserResult*r) {
         if (![m childIsNull:2]) {
             nulls = [m.child[2].val integerValue];
         }
-        assert([m.child[0].val isKindOfClass:[SelectField class]]);
-        m.val = [OrderBy field:(SelectField*)m.child[0].val asc:asc nulls:nulls loc:m.loc];
+        m.val = [OrderBy field:m.child[0].val asc:asc nulls:nulls loc:m.loc];
         return m;
     }];
-    ZKParser *orderByFields = [f zeroOrOne:[f seq:@[ws,[f skip:@"ORDER"],ws,[f skip:@"BY"],ws,[f oneOrMore:orderByField separator:commaSep]] onMatch:^ParserResult*(ArrayParserResult*r) {
+    ZKParser *orderByFields = [f zeroOrOne:[f seq:@[ws, [f skip:@"ORDER"], ws, [f skip:@"BY"], ws, [f oneOrMore:orderByField separator:commaSep]] onMatch:^ParserResult*(ArrayParserResult*r) {
         
-        // loc for OrderBys is just the ORDER BY keyword.
+        // loc for OrderBys is just the ORDER BY keyword. TODO, we probably don't want that.
         r.val = [OrderBys by:[r.child[5].val valueForKey:@"val"] loc:NSUnionRange(r.child[1].loc, r.child[3].loc)];
         return r;
     }]];
@@ -207,8 +189,7 @@ ParserResult * pickVals(ParserResult*r) {
         q.filterScope = [m childIsNull:7] ? nil : [m.child[7] posString];
         q.where = [m childIsNull:8] ? nil : m.child[8].val;
         q.orderBy = [m childIsNull:9] ? [OrderBys new] : m.child[9].val;
-        NSLog(@"where %@", m.child[8]);
-        m.val= q;
+        m.val = q;
         return m;
     }];
     return selectStmt;
