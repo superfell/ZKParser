@@ -112,6 +112,17 @@ SoqlParser *p = nil;
     XCTAssertNil(err);
 }
 
+-(void)testWhereLiteralTypes {
+    NSError *err = nil;
+    SelectQuery *res = [p parse:@"select id from contact where name='bob'" error:&err];
+    assertStringsEq([res toSoql], @"SELECT id FROM contact WHERE name='bob'");
+    XCTAssertNil(err);
+
+    res = [p parse:@"select id from contact where city!=null" error:&err];
+    assertStringsEq([res toSoql], @"SELECT id FROM contact WHERE city!=NULL");
+    XCTAssertNil(err);
+}
+
 -(void)testWhere {
     NSError *err = nil;
     SelectQuery *res = [p parse:@"select id from contact where name = 'bob'" error:&err];

@@ -107,13 +107,17 @@
     /// WHERE
     ZKParser *operator = [f oneOfTokens:@"< <= > >= = != LIKE IN NOT INCLUDES EXCLUDES"];
     NSCharacterSet *charSetQuote = [NSCharacterSet characterSetWithCharactersInString:@"'"];
-    ZKParser *literalValue = [[f seq:@[[f eq:@"'"], [f notCharacters:charSetQuote name:@"literal" min:1], [f eq:@"'"]]] onMatch:^ParserResult *(ArrayParserResult *r) {
-        LiteralValue *v = [LiteralValue new];
+    ZKArrayParser *literalStringValue = [f seq:@[[f eq:@"'"], [f notCharacters:charSetQuote name:@"literal" min:1], [f eq:@"'"]]];
+    [literalStringValue onMatch:^ParserResult *(ArrayParserResult *r) {
+        LiteralStringValue *v = [LiteralStringValue new];
         v.val = [r.child[1] posString];
         v.loc = r.loc;
         r.val = v;
         return r;
     }];
+    ZKParser *literalNullValue = [[f eq:@"null"] onMatch:setValue([LiteralNullValue new])];
+    ZKParser *literalValue = [f firstOf:@[literalStringValue, literalNullValue]];
+    
     ZKParser *baseExpr = [[f seq:@[field, maybeWs, operator, maybeWs, literalValue]] onMatch:^ParserResult *(ArrayParserResult *r) {
         r.val = [ComparisonExpr left:r.child[0].val op:[r.child[2] posString] right:r.child[4].val loc:r.loc];
         return r;

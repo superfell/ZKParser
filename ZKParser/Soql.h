@@ -54,7 +54,13 @@
 @end
 
 @interface LiteralValue : Expr
+@end
+
+@interface LiteralStringValue : LiteralValue
 @property (strong,nonatomic) PositionedString *val; // TODO
+@end
+
+@interface LiteralNullValue : LiteralValue
 @end
 
 @interface ComparisonExpr : Expr

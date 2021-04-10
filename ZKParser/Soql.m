@@ -144,10 +144,19 @@ void append(NSMutableString *q, NSArray *a) {
 @end
 
 @implementation LiteralValue
+@end
+
+@implementation LiteralStringValue
 -(void)appendSoql:(NSMutableString *)dest {
     [dest appendString:@"'"];
     [dest appendString: self.val.val];
     [dest appendString:@"'"];
+}
+@end
+
+@implementation LiteralNullValue
+-(void)appendSoql:(NSMutableString *)dest {
+    [dest appendString:@"NULL"];
 }
 @end
 
