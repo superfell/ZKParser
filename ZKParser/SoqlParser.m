@@ -56,7 +56,7 @@ ParserResult * pickVals(ParserResult*r) {
     };
     ZKParser* ws = [f whitespace];
     ZKParser* maybeWs = [f maybeWhitespace];
-    ZKParser* commaSep = [f seq:@[maybeWs, [f skip:@","], maybeWs]];
+    ZKParser* commaSep = [f seq:@[maybeWs, [f eq:@","], maybeWs]];
     ZKParser* ident = [f characters:[NSCharacterSet characterSetWithCharactersInString:@"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_"]
                                name:@"identifier"
                                 min:1];
@@ -174,7 +174,7 @@ ParserResult * pickVals(ParserResult*r) {
         m.val = [OrderBy field:m.child[0].val asc:asc nulls:nulls loc:m.loc];
         return m;
     }];
-    ZKParser *orderByFields = [f zeroOrOne:[f seq:@[ws, [f skip:@"ORDER"], ws, [f skip:@"BY"], ws, [f oneOrMore:orderByField separator:commaSep]] onMatch:^ParserResult*(ArrayParserResult*r) {
+    ZKParser *orderByFields = [f zeroOrOne:[f seq:@[ws, [f eq:@"ORDER"], ws, [f eq:@"BY"], ws, [f oneOrMore:orderByField separator:commaSep]] onMatch:^ParserResult*(ArrayParserResult*r) {
         
         // loc for OrderBys is just the ORDER BY keyword. TODO, we probably don't want that.
         r.val = [OrderBys by:[r.child[5].val valueForKey:@"val"] loc:NSUnionRange(r.child[1].loc, r.child[3].loc)];

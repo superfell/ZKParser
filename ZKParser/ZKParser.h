@@ -84,8 +84,6 @@ typedef ParserResult *(^ParseBlock)(ZKParserInput*input,NSError **err);
 // match 0 or more consecutive characters not in the supplied character set.
 -(ZKParser*)notCharacters:(NSCharacterSet*)set name:(NSString *)name min:(NSUInteger)minMatches;
 
--(ZKParser*)skip:(NSString *)s;       // same as exactly, but doesn't return a value.
-
 -(ZKParserSeq*)seq:(NSArray<ZKParser*>*)items;
 -(ZKParserSeq*)seq:(NSArray<ZKParser*>*)items onMatch:(ArrayMapperBlock)block;
 

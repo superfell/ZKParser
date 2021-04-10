@@ -476,15 +476,6 @@
     }];
 }
 
--(ZKParser*)skip:(NSString *)s {
-    ZKParserExact *e = [ZKParserExact new];
-    e.match = s;
-    e.caseSensitivity = self.defaultCaseSensitivity;
-    e.returnValue = NO;
-    e.debugName = [NSString stringWithFormat:@"skip: %@", s];
-    return e;
-}
-
 -(ZKParser*)whitespace {
     ZKParserCharSet *w = [ZKParserCharSet new];
     w.charSet = [NSCharacterSet whitespaceCharacterSet];
