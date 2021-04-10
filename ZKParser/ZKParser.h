@@ -9,12 +9,8 @@
 #import <Foundation/Foundation.h>
 #import "ZKParserInput.h"
 
-@class ZKParserSeq;
-@class ZKParserOneOf;
-
 @interface ParserResult : NSObject
 +(instancetype)result:(NSObject*)val loc:(NSRange)loc;
-+(instancetype)result:(NSObject*)val locs:(NSArray<ParserResult*>*)locs;
 
 @property (strong,nonatomic) id val;
 @property (assign,nonatomic) NSRange loc;
@@ -24,14 +20,17 @@
 +(instancetype)result:(NSArray<ParserResult*>*)val loc:(NSRange)loc;
 
 @property (strong,nonatomic) NSArray<ParserResult*> *child;
+
 // returns the val field from each of the child results.
 -(NSArray*)childVals;
+
 // returns true if the value for the indicated child is nil or [NSNull null]
 -(BOOL)childIsNull:(NSInteger)idx;
+
 @end
 
-typedef ParserResult *(^MapperBlock)(ParserResult *r);
-typedef ParserResult *(^ArrayMapperBlock)(ArrayParserResult *r);
+typedef ParserResult *(^ResultMapper)(ParserResult *r);
+typedef ParserResult *(^ArrayResultMapper)(ArrayParserResult *r);
 
 
 @interface ZKParser : NSObject
@@ -41,15 +40,15 @@ typedef ParserResult *(^ArrayMapperBlock)(ArrayParserResult *r);
 @end
 
 @interface ZKParserOneOf : ZKParser
--(ZKParserSeq*)onMatch:(MapperBlock)block;
+-(instancetype)onMatch:(ResultMapper)block;
 @end
 
 @interface ZKParserSeq : ZKParser
--(ZKParserSeq*)onMatch:(ArrayMapperBlock)block;
+-(ZKParserSeq*)onMatch:(ArrayResultMapper)block;
 @end
 
 @interface ZKParserRepeat : ZKParser
--(ZKParserSeq*)onMatch:(ArrayMapperBlock)block;
+-(ZKParserSeq*)onMatch:(ArrayResultMapper)block;
 @end
 
 // ParserRef lets you pass a parser to another parser, and later
@@ -71,7 +70,7 @@ typedef ParserResult *(^ParseBlock)(ZKParserInput*input,NSError **err);
 -(ZKParser*)exactly:(NSString *)s;    // case sensitive set by defaultCaseSensitivity
 -(ZKParser*)exactly:(NSString *)s setValue:(NSObject*)val;    // case sensitive set by defaultCaseSensitivity
 -(ZKParser*)exactly:(NSString *)s case:(ZKCaseSensitivity)c;
--(ZKParser*)exactly:(NSString *)s case:(ZKCaseSensitivity)c onMatch:(MapperBlock)block;
+-(ZKParser*)exactly:(NSString *)s case:(ZKCaseSensitivity)c onMatch:(ResultMapper)block;
 
 // match 0 or more consecutive characters that are in the character set.
 -(ZKParser*)characters:(NSCharacterSet*)set name:(NSString *)name min:(NSUInteger)minMatches;
@@ -80,18 +79,18 @@ typedef ParserResult *(^ParseBlock)(ZKParserInput*input,NSError **err);
 -(ZKParser*)notCharacters:(NSCharacterSet*)set name:(NSString *)name min:(NSUInteger)minMatches;
 
 -(ZKParserSeq*)seq:(NSArray<ZKParser*>*)items;
--(ZKParserSeq*)seq:(NSArray<ZKParser*>*)items onMatch:(ArrayMapperBlock)block;
+-(ZKParserSeq*)seq:(NSArray<ZKParser*>*)items onMatch:(ArrayResultMapper)block;
 
 // selects the first item from the list that matches
 -(ZKParser*)firstOf:(NSArray<ZKParser*>*)items;
--(ZKParser*)firstOf:(NSArray<ZKParser*>*)items onMatch:(MapperBlock)block;
+-(ZKParser*)firstOf:(NSArray<ZKParser*>*)items onMatch:(ResultMapper)block;
 
 // tokens is a whitespace separated list of tokens, returns the matching token.
 -(ZKParser*)oneOfTokens:(NSString *)tokens;
 
 // selects the item from the list that has the longest match, all items are evaluated.
 -(ZKParserOneOf*)oneOf:(NSArray<ZKParser*>*)items;
--(ZKParserOneOf*)oneOf:(NSArray<ZKParser*>*)items onMatch:(MapperBlock)block;
+-(ZKParserOneOf*)oneOf:(NSArray<ZKParser*>*)items onMatch:(ResultMapper)block;
 
 -(ZKParserRepeat*)zeroOrMore:(ZKParser*)p;
 -(ZKParserRepeat*)oneOrMore:(ZKParser*)p;
@@ -105,9 +104,9 @@ typedef ParserResult *(^ParseBlock)(ZKParserInput*input,NSError **err);
 
 // Constructs a new Parser instance from the supplied block
 -(ZKParser*)fromBlock:(ParseBlock)parser;
--(ZKParser*)fromBlock:(ParseBlock)parser mapper:(MapperBlock)m;
+-(ZKParser*)fromBlock:(ParseBlock)parser mapper:(ResultMapper)m;
 
--(ZKParser*)map:(ZKParser*)p onMatch:(MapperBlock)block;
+-(ZKParser*)map:(ZKParser*)p onMatch:(ResultMapper)block;
 
 // Constucts a new parser that contains a reference to another parser. Can be used to
 // refer to as yet unconstructed parsers where there are circular or recursive definitions.

@@ -15,13 +15,7 @@
     r.loc = loc;
     return r;
 }
-+(instancetype)result:(NSObject*)val locs:(NSArray<ParserResult*>*)locs {
-    if (locs.count > 0) {
-        NSRange loc = NSUnionRange(locs[0].loc, [locs lastObject].loc);
-        return [self result:val loc:loc];
-    }
-    return [self result:val loc:NSMakeRange(0,0)];
-}
+
 -(BOOL)isEqual:(ParserResult*)other {
     return [self.val isEqual:other.val] && (self.loc.location == other.loc.location) && (self.loc.length == other.loc.length);
 }
@@ -60,7 +54,7 @@
 @interface ZKParserExact : ZKParser
 @property (strong,nonatomic) NSString *match;
 @property (assign,nonatomic) ZKCaseSensitivity caseSensitivity;
-@property (strong,nonatomic) MapperBlock onMatch;
+@property (strong,nonatomic) ResultMapper onMatch;
 @property (assign,nonatomic) BOOL returnValue;
 @end
 
@@ -75,23 +69,23 @@
 @end
 
 @interface ZKParserFirstOf : ZKParser
-@property (strong,nonatomic) MapperBlock matchBlock;
+@property (strong,nonatomic) ResultMapper matchBlock;
 @property (strong,nonatomic) NSArray<ZKParser*>* items;
 @end
 
 @interface ZKParserOneOf()
-@property (strong,nonatomic) MapperBlock matchBlock;
+@property (strong,nonatomic) ResultMapper matchBlock;
 @property (strong,nonatomic) NSArray<ZKParser*>* items;
 @end
 
 @interface ZKParserSeq()
-@property (strong,nonatomic) ArrayMapperBlock matchBlock;
+@property (strong,nonatomic) ArrayResultMapper matchBlock;
 @property (strong,nonatomic) NSArray<ZKParser*>* items;
 @end
 
 @interface ZKParserRepeat()
 +(instancetype)repeated:(ZKParser*)p sep:(ZKParser*)sep min:(NSUInteger)min max:(NSUInteger)max;
-@property (strong,nonatomic) ArrayMapperBlock matchBlock;
+@property (strong,nonatomic) ArrayResultMapper matchBlock;
 @property (strong,nonatomic) ZKParser *parser;
 @property (strong,nonatomic) ZKParser *separator;
 @property (assign,nonatomic) NSUInteger min;
@@ -105,12 +99,12 @@
 
 @interface ZKParserMapper : ZKParser
 @property (strong, nonatomic) ZKParser *inner;
-@property (strong, nonatomic) MapperBlock block;
+@property (strong, nonatomic) ResultMapper block;
 @end
 
 @interface ZKParserBlock : ZKParser
 @property (copy,nonatomic) ParseBlock parser;
-@property (strong, nonatomic) MapperBlock mapper;
+@property (strong, nonatomic) ResultMapper mapper;
 @end
 
 
@@ -271,7 +265,7 @@
     return longestRes;
 }
 
--(ZKParserOneOf*)onMatch:(MapperBlock)block {
+-(ZKParserOneOf*)onMatch:(ResultMapper)block {
     self.matchBlock = block;
     return self;
 }
@@ -297,7 +291,7 @@
     return r;
 }
 
--(ZKParserSeq*)onMatch:(ArrayMapperBlock)block {
+-(ZKParserSeq*)onMatch:(ArrayResultMapper)block {
     self.matchBlock = block;
     return self;
 }
@@ -322,7 +316,7 @@
     return r;
 }
 
--(ZKParserRepeat*)onMatch:(ArrayMapperBlock)block {
+-(ZKParserRepeat*)onMatch:(ArrayResultMapper)block {
     self.matchBlock = block;
     return self;
 }
@@ -387,7 +381,7 @@
 @end
 
 @implementation ZKParserBlock
-+(instancetype)block:(ParseBlock)b mapper:(MapperBlock)m {
++(instancetype)block:(ParseBlock)b mapper:(ResultMapper)m {
     ZKParserBlock *p = [ZKParserBlock new];
     p.parser = b;
     p.mapper = m;
@@ -405,14 +399,14 @@
 
 @implementation ZKParserFactory
 
--(ZKParser*)map:(ZKParser*)p onMatch:(MapperBlock)block {
+-(ZKParser*)map:(ZKParser*)p onMatch:(ResultMapper)block {
     ZKParserMapper *m = [ZKParserMapper new];
     m.inner = p;
     m.block = block;
     return m;
 }
 
--(ZKParser*)exactly:(NSString *)s case:(ZKCaseSensitivity)c onMatch:(MapperBlock)block {
+-(ZKParser*)exactly:(NSString *)s case:(ZKCaseSensitivity)c onMatch:(ResultMapper)block {
     ZKParserExact *e = [ZKParserExact new];
     e.match = s;
     e.caseSensitivity = c;
@@ -482,7 +476,7 @@
     return [ZKParserFirstOf firstOf:items];
 }
 
--(ZKParser*)firstOf:(NSArray<ZKParser*>*)items onMatch:(MapperBlock)block {
+-(ZKParser*)firstOf:(NSArray<ZKParser*>*)items onMatch:(ResultMapper)block {
     ZKParserFirstOf *p = [ZKParserFirstOf firstOf:items];
     p.matchBlock = block;
     return p;
@@ -516,7 +510,7 @@
     return o;
 }
 
--(ZKParser*)oneOf:(NSArray<ZKParser*>*)items onMatch:(MapperBlock)block {
+-(ZKParser*)oneOf:(NSArray<ZKParser*>*)items onMatch:(ResultMapper)block {
     ZKParserOneOf *o = [ZKParserOneOf new];
     o.items = items;
     o.matchBlock = block;
@@ -529,7 +523,7 @@
     return s;
 }
 
--(ZKParser*)seq:(NSArray<ZKParser*>*)items onMatch:(ArrayMapperBlock)block {
+-(ZKParser*)seq:(NSArray<ZKParser*>*)items onMatch:(ArrayResultMapper)block {
     ZKParserSeq *s = [ZKParserSeq new];
     s.items = items;
     s.matchBlock = block;
@@ -580,7 +574,7 @@
     return [ZKParserBlock block:parser mapper:nil];
 }
 
--(ZKParser*)fromBlock:(ParseBlock)parser mapper:(MapperBlock)m {
+-(ZKParser*)fromBlock:(ParseBlock)parser mapper:(ResultMapper)m {
     return [ZKParserBlock block:parser mapper:m];
 }
 

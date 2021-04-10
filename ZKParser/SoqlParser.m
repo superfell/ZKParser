@@ -16,7 +16,7 @@
 }
 @end
 
-MapperBlock pick(NSUInteger idx) {
+ResultMapper pick(NSUInteger idx) {
     return ^ParserResult *(ParserResult *m) {
         return m.val[idx];
     };
