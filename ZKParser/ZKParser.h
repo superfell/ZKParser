@@ -35,8 +35,6 @@ typedef ParserResult *(^ArrayResultMapper)(ArrayParserResult *r);
 
 @interface ZKParser : NSObject
 -(ParserResult *)parse:(ZKParserInput*)input error:(NSError **)err;
-
-@property (strong,nonatomic) NSString *debugName;
 @end
 
 @interface ZKParserOneOf : ZKParser

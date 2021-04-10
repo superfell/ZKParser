@@ -60,7 +60,6 @@ ParserResult * pickVals(ParserResult*r) {
     ZKParser* ident = [f characters:[NSCharacterSet characterSetWithCharactersInString:@"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_"]
                                name:@"identifier"
                                 min:1];
-    ident.debugName = @"ident";
     
     // SELECT LIST
     ZKParser *alias = [f zeroOrOne:[f seq:@[ws, ident] onMatch:pick(1)] ignoring:ignoreKeywords];

@@ -114,14 +114,9 @@
 }
 
 -(ParserResult *)parse:(ZKParserInput*)input error:(NSError **)err {
-    if (self.debugName != nil) {
-        NSLog(@"=> parse %@\t\tinput: %@", self.debugName, input.value);
-    }
+    // TODO add debug logging back in
     *err = nil;
     ParserResult *r = [self parseImpl:input error:err];
-    if (self.debugName != nil) {
-        NSLog(@"<= parse %@ :%@", self.debugName, [*err localizedDescription]);
-    }
     return r;
 }
 
@@ -412,7 +407,6 @@
     e.caseSensitivity = c;
     e.onMatch = block;
     e.returnValue = YES;
-    e.debugName = [NSString stringWithFormat:@"eq:%@", s];
     return e;
 }
 
@@ -440,7 +434,6 @@
     w.minMatches = 1;
     w.errorName = @"whitespace";
     w.returnValue = NO;
-    w.debugName = w.errorName;
     return w;
 }
 
@@ -450,7 +443,6 @@
     w.minMatches = 0;
     w.errorName = @"whitespace";
     w.returnValue = NO;
-    w.debugName = w.errorName;
     return w;
 }
 
