@@ -200,16 +200,19 @@
     ZKParserRef *exprList = [f parserRef];
     ZKParser *parens = [[f seq:@[[f eq:@"("], maybeWs, exprList, maybeWs, [f eq:@")"]]] onMatch:pick(2)];
     ZKParser *andOr = [[f seq:@[ws, [f oneOfTokens:@"AND OR"], ws]] onMatch:pick(1)];
-    exprList.parser = [[f seq:@[[f firstOf:@[parens, baseExpr]], [f zeroOrOne:[f seq:@[andOr, exprList]]]]] onMatch:^ParserResult*(ArrayParserResult*r) {
-        Expr *left = r.child[0].val;
-        if ([r childIsNull:1]) {
-            r.val = left;
-            return r;
+    ZKParser *not = [f seq:@[[f eq:@"NOT"], maybeWs]];
+    exprList.parser = [[f seq:@[[f zeroOrOne:not],[f firstOf:@[parens, baseExpr]], [f zeroOrOne:[f seq:@[andOr, exprList]]]]] onMatch:^ParserResult*(ArrayParserResult*r) {
+        Expr *expr = r.child[1].val;
+        if (![r childIsNull:2]) {
+            ArrayParserResult *rhs = (ArrayParserResult *)r.child[2];
+            PositionedString *op = [rhs.child[0] posString];
+            Expr *right = rhs.child[1].val;
+            expr = [OpAndOrExpr left:expr op:op right:right loc:NSUnionRange(r.child[1].loc, r.child[2].loc)];
         }
-        ArrayParserResult *rhs = (ArrayParserResult *)r.child[1];
-        PositionedString *op = [rhs.child[0] posString];
-        Expr *right = rhs.child[1].val;
-        r.val = [OpAndOrExpr left:left op:op right:right loc:r.loc];
+        if (![r childIsNull:0]) {
+            expr = [NotExpr expr:expr loc:r.loc];
+        }
+        r.val = expr;
         return r;
     }];
     ZKParser *where = [f zeroOrOne:[[f seq:@[ws ,[f eq:@"WHERE"], ws, exprList]] onMatch:pick(3)]];

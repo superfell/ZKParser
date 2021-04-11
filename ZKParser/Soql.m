@@ -215,6 +215,20 @@ void append(NSMutableString *q, NSArray *a) {
     [self.rightExpr appendSoql:dest];
     [dest appendString:@")"];
 }
+@end
+
+@implementation NotExpr
++(instancetype)expr:(Expr*)expr loc:(NSRange)loc {
+    NotExpr *n = [NotExpr new];
+    n.expr = expr;
+    n.loc = loc;
+    return n;
+}
+-(void)appendSoql:(NSMutableString *)dest {
+    [dest appendString:@"(NOT "];
+    [self.expr appendSoql:dest];
+    [dest appendString:@")"];
+}
 
 @end
 

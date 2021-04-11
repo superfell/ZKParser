@@ -165,6 +165,14 @@ SoqlParser *p = nil;
     assertStringsEq([res toSoql], @"SELECT id FROM contact WHERE toLabel(status)='employee'");
     XCTAssertNil(err);
 
+    res = [p parse:@"select id from contact where toLabel(LeadSource)='employee' AND NOT CALENDAR_YEAR(CreatedDate) < 2018" error:&err];
+    assertStringsEq([res toSoql], @"SELECT id FROM contact WHERE (toLabel(LeadSource)='employee' AND (NOT CALENDAR_YEAR(CreatedDate)<2018))");
+    XCTAssertNil(err);
+
+    res = [p parse:@"select id from contact where toLabel(LeadSource)='employee' AND (NOT CALENDAR_YEAR(CreatedDate) < 2018)" error:&err];
+    assertStringsEq([res toSoql], @"SELECT id FROM contact WHERE (toLabel(LeadSource)='employee' AND (NOT CALENDAR_YEAR(CreatedDate)<2018))");
+    XCTAssertNil(err);
+
     res = [p parse:@"select id from contact where name = 'bob' or name='alice'" error:&err];
     assertStringsEq([res toSoql], @"SELECT id FROM contact WHERE (name='bob' OR name='alice')");
     XCTAssertNil(err);

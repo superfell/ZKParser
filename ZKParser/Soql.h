@@ -83,6 +83,11 @@ typedef NS_ENUM(uint16_t, LiteralType) {
 @property (strong,nonatomic) Expr *rightExpr;
 @end
 
+@interface NotExpr: Expr
++(instancetype)expr:(Expr*)expr loc:(NSRange)loc;
+@property (strong,nonatomic) Expr *expr;
+@end
+
 static const NSInteger NullsDefault = 1;
 static const NSInteger NullsFirst = 2;
 static const NSInteger NullsLast = 3;
