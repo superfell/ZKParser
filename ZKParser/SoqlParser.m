@@ -188,6 +188,7 @@
     }];
     
     /// WHERE
+    ZKParserRef *selectStmt = [f parserRef];
     ZKParser *operator = [f oneOfTokens:@"< <= > >= = != LIKE"];
     ZKParser *opIncExcl = [f oneOfTokens:@"INCLUDES EXCLUDES"];
     ZKParser *opInNotIn = [f oneOf:@[[f eq:@"IN"], [[f seq:@[[f eq:@"NOT"], ws, [f eq:@"IN"]]] onMatch:setValue(@"NOT IN")]]];
@@ -200,10 +201,11 @@
         r.val = [LiteralValueArray withValues:vals loc:r.loc];
         return r;
     }];
+    ZKParser *nestedSelectStmt = [[f seq:@[[f eq:@"("], maybeWs, selectStmt, maybeWs, [f eq:@")"]]] onMatch:pick(2)];
     ZKParser *operatorRHS = [f oneOf:@[
         [f seq:@[operator, maybeWs, literalValue]],
-        [f seq:@[opInNotIn, maybeWs, literalStringList]],
-        [f seq:@[opIncExcl, maybeWs, literalStringList]]]];
+        [f seq:@[opIncExcl, maybeWs, literalStringList]],
+        [f seq:@[opInNotIn, maybeWs, [f oneOf:@[literalStringList, nestedSelectStmt]]]]]];
 
     ZKParser *baseExpr = [[f seq:@[selectExpr, maybeWs, operatorRHS]] onMatch:^ParserResult *(ArrayParserResult *r) {
         ArrayParserResult *opRhs = (ArrayParserResult*)r.child[2];
@@ -264,7 +266,7 @@
     }]];
 
     /// SELECT
-    ZKParser* selectStmt = [[f seq:@[[f eq:@"SELECT"], ws, selectExprs, ws, [f eq:@"FROM"], ws, objectRefs, filterScope, where, orderByFields]] onMatch:^ParserResult*(ArrayParserResult*m) {
+    selectStmt.parser = [[f seq:@[[f eq:@"SELECT"], ws, selectExprs, ws, [f eq:@"FROM"], ws, objectRefs, filterScope, where, orderByFields]] onMatch:^ParserResult*(ArrayParserResult*m) {
         SelectQuery *q = [SelectQuery new];
         q.selectExprs = m.child[2].val;
         q.from = m.child[6].val;

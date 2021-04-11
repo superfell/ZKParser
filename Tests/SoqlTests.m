@@ -216,9 +216,16 @@ SoqlParser *p = nil;
 
 -(void)testWhereIncExcl {
     NSError *err = nil;
-    SelectQuery *res = [p parse:@"select id from account where name = 'bob' AND msp__c includes('A','B;C')" error:&err];
+    SelectQuery *res = [p parse:@"select id from account where name = 'bob' AND msp__c includes ('A','B;C')" error:&err];
     assertStringsEq([res toSoql], @"SELECT id FROM account WHERE (name = 'bob' AND msp__c INCLUDES ('A','B;C'))");
     XCTAssertNil(err);
+    
+    res = [p parse:@"select id from account where name = 'bob' AND msp__c excludes('A')" error:&err];
+    assertStringsEq([res toSoql], @"SELECT id FROM account WHERE (name = 'bob' AND msp__c EXCLUDES ('A'))");
+    XCTAssertNil(err);
+
+    [p parse:@"select id from account where name = 'bob' AND msp__c excludes bob" error:&err];
+    assertStringsEq(err.localizedDescription, @"Unexpected input ' AND msp__c excludes bob' at position 42");
 }
 
 -(void)testWhereInNotIn {
@@ -233,6 +240,14 @@ SoqlParser *p = nil;
 
     res = [p parse:@"select id from account where name = 'bob' AND not city not    in ('SF','LA')" error:&err];
     assertStringsEq([res toSoql], @"SELECT id FROM account WHERE (name = 'bob' AND (NOT city NOT IN ('SF','LA')))");
+    XCTAssertNil(err);
+
+    res = [p parse:@"SELECT Id FROM Task WHERE WhoId IN ( SELECT  Id FROM Contact WHERE MailingCity = 'Twin Falls')" error:&err];
+    assertStringsEq([res toSoql], @"SELECT Id FROM Task WHERE WhoId IN (SELECT Id FROM Contact WHERE MailingCity = 'Twin Falls')");
+    XCTAssertNil(err);
+
+    res = [p parse:@"SELECT Id FROM Task WHERE WhoId NOT IN ( SELECT  Id FROM Contact WHERE MailingCity = 'Twin Falls')" error:&err];
+    assertStringsEq([res toSoql], @"SELECT Id FROM Task WHERE WhoId NOT IN (SELECT Id FROM Contact WHERE MailingCity = 'Twin Falls')");
     XCTAssertNil(err);
 }
 @end

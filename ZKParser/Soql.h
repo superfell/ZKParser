@@ -109,7 +109,7 @@ static const NSInteger NullsLast = 3;
 @property (strong,nonatomic) NSArray<OrderBy*> *items;
 @end
 
-@interface SelectQuery : AstNode
+@interface SelectQuery : Expr
 @property (strong,nonatomic) NSArray *selectExprs;
 @property (strong,nonatomic) From *from;
 @property (strong,nonatomic) PositionedString *filterScope;

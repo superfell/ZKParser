@@ -185,9 +185,7 @@ void append(NSMutableString *q, NSArray *a) {
     return a;
 }
 -(void)appendSoql:(NSMutableString *)dest {
-    [dest appendString:@"("];
     append(dest, self.values);
-    [dest appendString:@")"];
 }
 @end
 
@@ -205,8 +203,11 @@ void append(NSMutableString *q, NSArray *a) {
     [self.left appendSoql:dest];
     [dest appendString:@" "];
     [self.op appendSoql:dest];
+    BOOL isListOp = [self.op.val isEqualTo:@"IN"] || [self.op.val isEqualTo:@"NOT IN"] || [self.op.val isEqualTo:@"INCLUDES"] || [self.op.val isEqualTo:@"EXCLUDES"];
     [dest appendString:@" "];
+    if (isListOp) [dest appendString:@"("];
     [self.right appendSoql:dest];
+    if (isListOp) [dest appendString:@")"];
 }
 @end
 
