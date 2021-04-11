@@ -160,7 +160,11 @@ SoqlParser *p = nil;
     SelectQuery *res = [p parse:@"select id from contact where name = 'bob'" error:&err];
     assertStringsEq([res toSoql], @"SELECT id FROM contact WHERE name='bob'");
     XCTAssertNil(err);
-    
+
+    res = [p parse:@"select id from contact where toLabel(status)='employee'" error:&err];
+    assertStringsEq([res toSoql], @"SELECT id FROM contact WHERE toLabel(status)='employee'");
+    XCTAssertNil(err);
+
     res = [p parse:@"select id from contact where name = 'bob' or name='alice'" error:&err];
     assertStringsEq([res toSoql], @"SELECT id FROM contact WHERE (name='bob' OR name='alice')");
     XCTAssertNil(err);

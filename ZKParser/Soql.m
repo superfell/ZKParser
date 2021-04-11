@@ -179,7 +179,7 @@ void append(NSMutableString *q, NSArray *a) {
 @end
 
 @implementation ComparisonExpr
-+(instancetype) left:(SelectField*)left op:(PositionedString*)op right:(LiteralValue*)right loc:(NSRange)loc {
++(instancetype) left:(Expr*)left op:(PositionedString*)op right:(LiteralValue*)right loc:(NSRange)loc {
     ComparisonExpr *e = [self new];
     e.left = left;
     e.op = op;

@@ -190,7 +190,7 @@
     /// WHERE
     ZKParser *operator = [f oneOfTokens:@"< <= > >= = != LIKE IN NOT INCLUDES EXCLUDES"];
     ZKParser *literalValue = [self literalValue:f];
-    ZKParser *baseExpr = [[f seq:@[field, maybeWs, operator, maybeWs, literalValue]] onMatch:^ParserResult *(ArrayParserResult *r) {
+    ZKParser *baseExpr = [[f seq:@[selectExpr, maybeWs, operator, maybeWs, literalValue]] onMatch:^ParserResult *(ArrayParserResult *r) {
         r.val = [ComparisonExpr left:r.child[0].val op:[r.child[2] posString] right:r.child[4].val loc:r.loc];
         return r;
     }];

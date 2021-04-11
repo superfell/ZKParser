@@ -34,7 +34,7 @@
 @property (strong,nonatomic) PositionedString *alias;
 @end
 
-@interface SelectFunc : AstNode
+@interface SelectFunc : Expr
 +(instancetype) name:(PositionedString*)n args:(NSArray<SelectField*>*)args alias:(PositionedString*)alias loc:(NSRange)loc;
 @property (strong, nonatomic) PositionedString *name;
 @property (strong, nonatomic) NSArray<SelectField*> *args;
@@ -70,8 +70,8 @@ typedef NS_ENUM(uint16_t, LiteralType) {
 @end
 
 @interface ComparisonExpr : Expr
-+(instancetype) left:(SelectField*)left op:(PositionedString*)op right:(LiteralValue*)right loc:(NSRange)loc;
-@property (strong,nonatomic) SelectField *left;
++(instancetype) left:(Expr*)left op:(PositionedString*)op right:(LiteralValue*)right loc:(NSRange)loc;
+@property (strong,nonatomic) Expr *left;
 @property (assign,nonatomic) PositionedString *op;
 @property (strong,nonatomic) LiteralValue *right;
 @end
