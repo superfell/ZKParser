@@ -32,11 +32,58 @@
     return (SelectQuery*)[input parse:self.parser error:err].val;
 }
 
+-(ZKSingularParser*)literalStringValue:(ZKParserFactory*)f {
+    return [f fromBlock:^ParserResult *(ZKParserInput *input, NSError *__autoreleasing *err) {
+        NSInteger start = input.pos;
+        if ((!input.hasMoreInput) || input.currentChar != '\'') {
+            *err = [NSError errorWithDomain:@"Soql"
+                                      code:1
+                                  userInfo:@{
+                                      NSLocalizedDescriptionKey:[NSString stringWithFormat:@"expecting ' at position %lu", input.pos+1],
+                                      @"Position": @(input.pos+1)
+                                  }];
+            return nil;
+        }
+        input.pos++;
+        while (true) {
+            if (!input.hasMoreInput) {
+                *err = [NSError errorWithDomain:@"Soql"
+                                          code:1
+                                      userInfo:@{
+                                          NSLocalizedDescriptionKey:[NSString stringWithFormat:@"reached end of input while parsing a string literal, missing closing ' at %lu", input.pos+1],
+                                          @"Position": @(input.pos+1)
+                                      }];
+                return nil;
+            }
+            unichar c = input.currentChar;
+            if (c == '\\') {
+                input.pos++;
+                if (!input.hasMoreInput) {
+                    *err = [NSError errorWithDomain:@"Soql"
+                                              code:1
+                                          userInfo:@{
+                                              NSLocalizedDescriptionKey:[NSString stringWithFormat:@"invalid escape sequence at %lu", input.pos],
+                                              @"Position": @(input.pos)
+                                          }];
+                }
+                input.pos++;
+                continue;
+            }
+            input.pos++;
+            if (c == '\'') {
+                break;
+            }
+        }
+        // range includes the ' tokens, the value does not.
+        NSRange rng = NSMakeRange(start,input.pos-start);
+        NSString *match = [input valueOfRange:NSMakeRange(start+1,input.pos-start-2)];
+        return [ParserResult result:match loc:rng];
+    }];
+}
+
 -(ZKParser*)literalValue:(ZKParserFactory*)f {
-    NSCharacterSet *charSetQuote = [NSCharacterSet characterSetWithCharactersInString:@"'"];
-    ZKArrayParser *literalStringValue = [f seq:@[[f eq:@"'"], [f notCharacters:charSetQuote name:@"literal" min:1], [f eq:@"'"]]];
-    [literalStringValue onMatch:^ParserResult *(ArrayParserResult *r) {
-        r.val = [LiteralValue withValue:r.child[1].posString type:LTString loc:r.loc];
+    ZKParser *literalStringValue = [[self literalStringValue:f] onMatch:^ParserResult *(ParserResult *r) {
+        r.val = [LiteralValue withValue:r.posString type:LTString loc:r.loc];
         return r;
     }];
     ZKParser *literalNullValue = [[f eq:@"null"] onMatch:^ParserResult *(ParserResult *r) {

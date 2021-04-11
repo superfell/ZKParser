@@ -118,6 +118,15 @@ SoqlParser *p = nil;
     assertStringsEq([res toSoql], @"SELECT id FROM contact WHERE name='bob'");
     XCTAssertNil(err);
 
+    res = [p parse:@"select id from contact where city!='o\\'hare'" error:&err];
+    assertStringsEq([res toSoql], @"SELECT id FROM contact WHERE city!='o\\'hare'");
+    XCTAssertNil(err);
+
+    [p parse:@"select id from contact where city!='o'hare'" error:&err];
+    assertStringsEq(err.localizedDescription, @"Unexpected input 'hare'' at position 39");
+    [p parse:@"select id from contact where city!='SF" error:&err];
+    assertStringsEq(err.localizedDescription, @"Unexpected input ' where city!='SF' at position 23");
+
     res = [p parse:@"select id from contact where city!=null" error:&err];
     assertStringsEq([res toSoql], @"SELECT id FROM contact WHERE city!=NULL");
     XCTAssertNil(err);
