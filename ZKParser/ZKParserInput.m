@@ -30,6 +30,15 @@
     return r;
 }
 
+-(BOOL)hasMoreInput {
+    return self.pos < self.input.length;
+}
+
+-(unichar)currentChar {
+    NSAssert([self hasMoreInput], @"currentChar called with no remaining input");
+    return [self.input characterAtIndex:self.pos];
+}
+
 -(NSUInteger)length {
     return self.input.length - self.pos;
 }

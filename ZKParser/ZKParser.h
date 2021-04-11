@@ -89,6 +89,12 @@ typedef ParserResult *(^ParseBlock)(ZKParserInput*input,NSError **err);
 // match 'min' or more consecutive characters that are not in the supplied character set.
 -(ZKSingularParser*)notCharacters:(NSCharacterSet*)set name:(NSString *)name min:(NSUInteger)minMatches;
 
+// match an integer number
+-(ZKSingularParser*)integerNumber;
+
+// match a decimal number
+-(ZKSingularParser*)decimalNumber;
+
 // match the supplied sequence of parsers.
 -(ZKArrayParser*)seq:(NSArray<ZKParser*>*)items;
 

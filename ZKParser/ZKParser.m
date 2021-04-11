@@ -93,6 +93,12 @@ ResultMapper setValue(NSObject *val) {
 @interface ZKParserNotCharSet : ZKParserCharSet
 @end
 
+@interface ZKParserInteger : ZKSingularParser
+@end
+
+@interface ZKParserDecimal : ZKSingularParser
+@end
+
 @interface ZKParserFirstOf : ZKSingularParser
 @property (strong,nonatomic) NSArray<ZKParser*>* items;
 @end
@@ -194,6 +200,7 @@ ResultMapper setValue(NSObject *val) {
 @end
 
 @implementation ZKParserCharSet
+
 -(ParserResult *)parseImpl:(ZKParserInput*)input error:(NSError **)err {
     NSInteger count = 0;
     NSInteger start = input.pos;
@@ -229,6 +236,101 @@ ResultMapper setValue(NSObject *val) {
 -(NSString *)description {
     return [NSString stringWithFormat:@"[%lu+ !%@]", self.minMatches, self.errorName];
 }
+@end
+
+@implementation ZKParserInteger
+
+-(ParserResult *)parseImpl:(ZKParserInput*)input error:(NSError **)err {
+    NSInteger start = input.pos;
+    NSInteger val = 0;
+    NSInteger sign = 1;
+    BOOL first = TRUE;
+    BOOL valid = FALSE;
+    while (input.hasMoreInput) {
+        unichar c = input.currentChar;
+        if (first) {
+            first = FALSE;
+            if (c == '-') {
+                sign = -1;
+                input.pos++;
+                continue;
+            } else if (c == '+') {
+                input.pos++;
+                continue;
+            }
+        }
+        if (c < '0' || c > '9') {
+            break;
+        }
+        input.pos++;
+        val = val * 10;
+        val = val + c-'0';
+        valid = TRUE;
+    }
+    if (!valid) {
+        *err = [NSError errorWithDomain:@"Parser"
+                                  code:6
+                              userInfo:@{
+                                  NSLocalizedDescriptionKey:[NSString stringWithFormat:@"expecting an integer at position %lu", start+1],
+                                  @"Position": @(start+1)
+                              }];
+        return nil;
+    }
+    return [ParserResult result:[NSNumber numberWithInteger:val * sign] loc:NSMakeRange(start,input.pos-start)];
+}
+
+-(NSString *)description {
+    return @"[integer]";
+}
+
+@end
+
+@implementation ZKParserDecimal
+
+-(ParserResult *)parseImpl:(ZKParserInput*)input error:(NSError **)err {
+    NSInteger start = input.pos;
+    BOOL first = TRUE;
+    BOOL valid = FALSE;
+    BOOL seenDot = FALSE;
+    while (input.hasMoreInput) {
+        unichar c = input.currentChar;
+        if (first) {
+            first = FALSE;
+            if (c == '-' || c == '+') {
+                input.pos++;
+                continue;
+            }
+        }
+        if (!seenDot && c =='.') {
+            seenDot = TRUE;
+            valid = FALSE;  // has to be a number after the .
+            input.pos++;
+            continue;
+        }
+        if (c < '0' || c > '9') {
+            break;
+        }
+        input.pos++;
+        valid = TRUE;
+    }
+    if (!valid) {
+        *err = [NSError errorWithDomain:@"Parser"
+                                  code:6
+                              userInfo:@{
+                                  NSLocalizedDescriptionKey:[NSString stringWithFormat:@"expecting a decimal at position %lu", start+1],
+                                  @"Position": @(start+1)
+                              }];
+        return nil;
+    }
+    NSRange rng = NSMakeRange(start,input.pos-start);
+    NSDecimalNumber *val = [NSDecimalNumber decimalNumberWithString:[input valueOfRange:rng]];
+    return [ParserResult result:val loc:NSMakeRange(start,input.pos-start)];
+}
+
+-(NSString *)description {
+    return @"[decimal]";
+}
+
 @end
 
 @implementation ZKParserFirstOf
@@ -445,6 +547,15 @@ ResultMapper setValue(NSObject *val) {
     w.errorName = name;
     w.minMatches = minMatches;
     return w;
+}
+
+-(ZKSingularParser*)integerNumber {
+    return [ZKParserInteger new];
+}
+
+// match a decimal number
+-(ZKSingularParser*)decimalNumber {
+    return [ZKParserDecimal new];
 }
 
 -(ZKSingularParser*)firstOf:(NSArray<ZKParser*>*)items {

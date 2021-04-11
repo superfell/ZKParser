@@ -28,6 +28,9 @@ typedef enum ZKCaseSensitivity {
 -(NSUInteger)length;    // remaining length
 -(NSString *)value;
 
+-(BOOL)hasMoreInput;
+-(unichar)currentChar;  // asserts if no more input.
+
 -(NSString *)consumeString:(NSString *)s caseSensitive:(ZKCaseSensitivity)cs;
 -(BOOL)consumeCharacterSet:(NSCharacterSet *)s;
 
