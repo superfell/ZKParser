@@ -220,4 +220,19 @@ SoqlParser *p = nil;
     assertStringsEq([res toSoql], @"SELECT id FROM account WHERE (name = 'bob' AND msp__c INCLUDES ('A','B;C'))");
     XCTAssertNil(err);
 }
+
+-(void)testWhereInNotIn {
+    NSError *err = nil;
+    SelectQuery *res = [p parse:@"select id from account where name = 'bob' AND city IN ('SF','LA')" error:&err];
+    assertStringsEq([res toSoql], @"SELECT id FROM account WHERE (name = 'bob' AND city IN ('SF','LA'))");
+    XCTAssertNil(err);
+    
+    res = [p parse:@"select id from account where name = 'bob' AND city not    in ('SF','LA')" error:&err];
+    assertStringsEq([res toSoql], @"SELECT id FROM account WHERE (name = 'bob' AND city NOT IN ('SF','LA'))");
+    XCTAssertNil(err);
+
+    res = [p parse:@"select id from account where name = 'bob' AND not city not    in ('SF','LA')" error:&err];
+    assertStringsEq([res toSoql], @"SELECT id FROM account WHERE (name = 'bob' AND (NOT city NOT IN ('SF','LA')))");
+    XCTAssertNil(err);
+}
 @end

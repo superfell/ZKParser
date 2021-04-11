@@ -190,6 +190,7 @@
     /// WHERE
     ZKParser *operator = [f oneOfTokens:@"< <= > >= = != LIKE"];
     ZKParser *opIncExcl = [f oneOfTokens:@"INCLUDES EXCLUDES"];
+    ZKParser *opInNotIn = [f oneOf:@[[f eq:@"IN"], [[f seq:@[[f eq:@"NOT"], ws, [f eq:@"IN"]]] onMatch:setValue(@"NOT IN")]]];
     ZKParser *literalValue = [self literalValue:f];
     ZKParser *literalStringList = [[f seq:@[    [f eq:@"("], maybeWs,
                                                 [f oneOrMore:[self literalStringValue:f] separator:commaSep],
@@ -201,6 +202,7 @@
     }];
     ZKParser *operatorRHS = [f oneOf:@[
         [f seq:@[operator, maybeWs, literalValue]],
+        [f seq:@[opInNotIn, maybeWs, literalStringList]],
         [f seq:@[opIncExcl, maybeWs, literalStringList]]]];
 
     ZKParser *baseExpr = [[f seq:@[selectExpr, maybeWs, operatorRHS]] onMatch:^ParserResult *(ArrayParserResult *r) {
