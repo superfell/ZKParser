@@ -175,7 +175,20 @@ void append(NSMutableString *q, NSArray *a) {
             NSAssert(false, @"unknown type in LiteralValue");
     }
 }
+@end
 
+@implementation LiteralValueArray
++(instancetype)withValues:(NSArray<LiteralValue*>*)values loc:(NSRange)loc {
+    LiteralValueArray *a = [LiteralValueArray new];
+    a.values = values;
+    a.loc = loc;
+    return a;
+}
+-(void)appendSoql:(NSMutableString *)dest {
+    [dest appendString:@"("];
+    append(dest, self.values);
+    [dest appendString:@")"];
+}
 @end
 
 @implementation ComparisonExpr
@@ -190,7 +203,9 @@ void append(NSMutableString *q, NSArray *a) {
 }
 -(void)appendSoql:(NSMutableString *)dest {
     [self.left appendSoql:dest];
+    [dest appendString:@" "];
     [self.op appendSoql:dest];
+    [dest appendString:@" "];
     [self.right appendSoql:dest];
 }
 @end

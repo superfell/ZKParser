@@ -75,17 +75,17 @@
             }
         }
         // range includes the ' tokens, the value does not.
-        NSRange rng = NSMakeRange(start,input.pos-start);
-        NSString *match = [input valueOfRange:NSMakeRange(start+1,input.pos-start-2)];
-        return [ParserResult result:match loc:rng];
+        NSRange overalRng = NSMakeRange(start,input.pos-start);
+        NSRange matchRng = NSMakeRange(start+1,input.pos-start-2);
+        Expr *expr = [LiteralValue withValue:[PositionedString string:[input valueOfRange:matchRng] loc:matchRng]
+                                        type:LTString
+                                         loc:overalRng];
+        return [ParserResult result:expr loc:overalRng];
     }];
 }
 
 -(ZKParser*)literalValue:(ZKParserFactory*)f {
-    ZKParser *literalStringValue = [[self literalStringValue:f] onMatch:^ParserResult *(ParserResult *r) {
-        r.val = [LiteralValue withValue:r.posString type:LTString loc:r.loc];
-        return r;
-    }];
+    ZKParser *literalStringValue = [self literalStringValue:f];
     ZKParser *literalNullValue = [[f eq:@"null"] onMatch:^ParserResult *(ParserResult *r) {
         r.val = [LiteralValue withValue:[NSNull null] type:LTNull loc:r.loc];
         return r;
@@ -188,10 +188,24 @@
     }];
     
     /// WHERE
-    ZKParser *operator = [f oneOfTokens:@"< <= > >= = != LIKE IN NOT INCLUDES EXCLUDES"];
+    ZKParser *operator = [f oneOfTokens:@"< <= > >= = != LIKE"];
+    ZKParser *opIncExcl = [f oneOfTokens:@"INCLUDES EXCLUDES"];
     ZKParser *literalValue = [self literalValue:f];
-    ZKParser *baseExpr = [[f seq:@[selectExpr, maybeWs, operator, maybeWs, literalValue]] onMatch:^ParserResult *(ArrayParserResult *r) {
-        r.val = [ComparisonExpr left:r.child[0].val op:[r.child[2] posString] right:r.child[4].val loc:r.loc];
+    ZKParser *literalStringList = [[f seq:@[    [f eq:@"("], maybeWs,
+                                                [f oneOrMore:[self literalStringValue:f] separator:commaSep],
+                                                maybeWs, [f eq:@")"]]]
+                                   onMatch:^ParserResult*(ArrayParserResult*r) {
+        NSArray* vals = [r.child[2].val valueForKey:@"val"];
+        r.val = [LiteralValueArray withValues:vals loc:r.loc];
+        return r;
+    }];
+    ZKParser *operatorRHS = [f oneOf:@[
+        [f seq:@[operator, maybeWs, literalValue]],
+        [f seq:@[opIncExcl, maybeWs, literalStringList]]]];
+
+    ZKParser *baseExpr = [[f seq:@[selectExpr, maybeWs, operatorRHS]] onMatch:^ParserResult *(ArrayParserResult *r) {
+        ArrayParserResult *opRhs = (ArrayParserResult*)r.child[2];
+        r.val = [ComparisonExpr left:r.child[0].val op:[opRhs.child[0] posString] right:opRhs.child[2].val loc:r.loc];
         return r;
     }];
 

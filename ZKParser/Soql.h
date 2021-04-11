@@ -69,6 +69,11 @@ typedef NS_ENUM(uint16_t, LiteralType) {
 @property (assign,nonatomic) LiteralType type;
 @end
 
+@interface LiteralValueArray : Expr
++(instancetype)withValues:(NSArray<LiteralValue*> *)v loc:(NSRange)loc;
+@property (strong,nonatomic) NSArray<LiteralValue*> *values;
+@end
+
 @interface ComparisonExpr : Expr
 +(instancetype) left:(Expr*)left op:(PositionedString*)op right:(LiteralValue*)right loc:(NSRange)loc;
 @property (strong,nonatomic) Expr *left;
