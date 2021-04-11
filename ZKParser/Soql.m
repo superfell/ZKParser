@@ -144,20 +144,38 @@ void append(NSMutableString *q, NSArray *a) {
 @end
 
 @implementation LiteralValue
-@end
-
-@implementation LiteralStringValue
--(void)appendSoql:(NSMutableString *)dest {
-    [dest appendString:@"'"];
-    [dest appendString: self.val.val];
-    [dest appendString:@"'"];
++(instancetype)withValue:(NSObject *)val type:(LiteralType)t loc:(NSRange)loc {
+    LiteralValue *v = [self new];
+    v.val = val;
+    v.type = t;
+    v.loc = loc;
+    return v;
 }
-@end
 
-@implementation LiteralNullValue
 -(void)appendSoql:(NSMutableString *)dest {
-    [dest appendString:@"NULL"];
+    switch (self.type) {
+        case LTString:
+            [dest appendString:@"'"];
+            [(PositionedString*)self.val appendSoql:dest];
+            [dest appendString:@"'"];
+            break;
+        case LTNull:
+            [dest appendString:@"NULL"];
+            break;
+        case LTBool:
+            [dest appendString:[(NSNumber*)self.val boolValue] ? @"TRUE": @"FALSE"];
+            break;
+        case LTNumber:
+            [dest appendFormat:@"%@", self.val];
+            break;
+        case LTToken:
+            [dest appendString:[(NSString*)self.val uppercaseString]];
+            break;
+        default:
+            NSAssert(false, @"unknown type in LiteralValue");
+    }
 }
+
 @end
 
 @implementation ComparisonExpr

@@ -53,14 +53,20 @@
 @property (strong,nonatomic) NSArray<SelectField*>* relatedObjects;
 @end
 
+typedef NS_ENUM(uint16_t, LiteralType) {
+    LTString,
+    LTNull,
+    LTBool,
+    LTNumber,
+    LTDateTime,
+    LTDate,
+    LTToken
+};
+
 @interface LiteralValue : Expr
-@end
-
-@interface LiteralStringValue : LiteralValue
-@property (strong,nonatomic) PositionedString *val; // TODO
-@end
-
-@interface LiteralNullValue : LiteralValue
++(instancetype)withValue:(NSObject *)v type:(LiteralType)t loc:(NSRange)loc;
+@property (strong,nonatomic) NSObject *val;
+@property (assign,nonatomic) LiteralType type;
 @end
 
 @interface ComparisonExpr : Expr

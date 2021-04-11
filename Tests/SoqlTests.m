@@ -121,6 +121,29 @@ SoqlParser *p = nil;
     res = [p parse:@"select id from contact where city!=null" error:&err];
     assertStringsEq([res toSoql], @"SELECT id FROM contact WHERE city!=NULL");
     XCTAssertNil(err);
+
+    res = [p parse:@"select id from contact where ishot=true" error:&err];
+    assertStringsEq([res toSoql], @"SELECT id FROM contact WHERE ishot=TRUE");
+    XCTAssertNil(err);
+    res = [p parse:@"select id from contact where ishot= false" error:&err];
+    assertStringsEq([res toSoql], @"SELECT id FROM contact WHERE ishot=FALSE");
+    XCTAssertNil(err);
+
+    res = [p parse:@"select id from contact where ishot > -10" error:&err];
+    assertStringsEq([res toSoql], @"SELECT id FROM contact WHERE ishot>-10");
+    XCTAssertNil(err);
+
+    res = [p parse:@"select id from contact where ishot > .5" error:&err];
+    assertStringsEq([res toSoql], @"SELECT id FROM contact WHERE ishot>0.5");
+    XCTAssertNil(err);
+
+    res = [p parse:@"select id from contact where ishot > YESTERDAY" error:&err];
+    assertStringsEq([res toSoql], @"SELECT id FROM contact WHERE ishot>YESTERDAY");
+    XCTAssertNil(err);
+
+    res = [p parse:@"select id from contact where ishot < LAST_N_MONTHS:3" error:&err];
+    assertStringsEq([res toSoql], @"SELECT id FROM contact WHERE ishot<LAST_N_MONTHS:3");
+    XCTAssertNil(err);
 }
 
 -(void)testWhere {
