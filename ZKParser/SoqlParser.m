@@ -32,6 +32,42 @@
     return (SelectQuery*)[input parse:self.parser error:err].val;
 }
 
+-(ZKParser*)literalValue:(ZKParserFactory*)f {
+    NSCharacterSet *charSetQuote = [NSCharacterSet characterSetWithCharactersInString:@"'"];
+    ZKArrayParser *literalStringValue = [f seq:@[[f eq:@"'"], [f notCharacters:charSetQuote name:@"literal" min:1], [f eq:@"'"]]];
+    [literalStringValue onMatch:^ParserResult *(ArrayParserResult *r) {
+        r.val = [LiteralValue withValue:r.child[1].posString type:LTString loc:r.loc];
+        return r;
+    }];
+    ZKParser *literalNullValue = [[f eq:@"null"] onMatch:^ParserResult *(ParserResult *r) {
+        r.val = [LiteralValue withValue:[NSNull null] type:LTNull loc:r.loc];
+        return r;
+    }];
+    ZKParser *literalTrueValue = [[f eq:@"true"] onMatch:^ParserResult *(ParserResult *r) {
+        r.val = [LiteralValue withValue:@TRUE type:LTBool loc:r.loc];
+        return r;
+    }];
+    ZKParser *literalFalseValue = [[f eq:@"false"] onMatch:^ParserResult *(ParserResult *r) {
+        r.val = [LiteralValue withValue:@FALSE type:LTBool loc:r.loc];
+        return r;
+    }];
+    ZKParser *literalNumberValue = [[f decimalNumber] onMatch:^ParserResult *(ParserResult *r) {
+        r.val = [LiteralValue withValue:r.val type:LTNumber loc:r.loc];
+        return r;
+    }];
+    NSError *err = nil;
+    NSRegularExpression *token = [NSRegularExpression regularExpressionWithPattern:@"[a-z]\\S*"
+                                                                           options:NSRegularExpressionCaseInsensitive
+                                                                             error:&err];
+    NSAssert(err == nil, @"failed to compile regex %@", err);
+    ZKParser *literalToken = [[f regex:token name:@"named literal"] onMatch:^ParserResult *(ParserResult *r) {
+        r.val = [LiteralValue withValue:r.val type:LTToken loc:r.loc];
+        return r;
+    }];
+    ZKParser *literalValue = [f oneOf:@[literalStringValue, literalNullValue, literalTrueValue, literalFalseValue, literalNumberValue, literalToken]];
+    return literalValue;
+}
+
 -(ZKParser*)buildParser {
     ZKParserFactory *f = [ZKParserFactory new];
     f.defaultCaseSensitivity = CaseInsensitive;
@@ -106,47 +142,11 @@
     
     /// WHERE
     ZKParser *operator = [f oneOfTokens:@"< <= > >= = != LIKE IN NOT INCLUDES EXCLUDES"];
-    NSCharacterSet *charSetQuote = [NSCharacterSet characterSetWithCharactersInString:@"'"];
-    ZKArrayParser *literalStringValue = [f seq:@[[f eq:@"'"], [f notCharacters:charSetQuote name:@"literal" min:1], [f eq:@"'"]]];
-    [literalStringValue onMatch:^ParserResult *(ArrayParserResult *r) {
-        r.val = [LiteralValue withValue:r.child[1].posString type:LTString loc:r.loc];
-        return r;
-    }];
-    ZKParser *literalNullValue = [[f eq:@"null"] onMatch:^ParserResult *(ParserResult *r) {
-        r.val = [LiteralValue withValue:[NSNull null] type:LTNull loc:r.loc];
-        return r;
-    }];
-    ZKParser *literalTrueValue = [[f eq:@"true"] onMatch:^ParserResult *(ParserResult *r) {
-        r.val = [LiteralValue withValue:@TRUE type:LTBool loc:r.loc];
-        return r;
-    }];
-    ZKParser *literalFalseValue = [[f eq:@"false"] onMatch:^ParserResult *(ParserResult *r) {
-        r.val = [LiteralValue withValue:@FALSE type:LTBool loc:r.loc];
-        return r;
-    }];
-    ZKParser *literalNumberValue = [[f decimalNumber] onMatch:^ParserResult *(ParserResult *r) {
-        r.val = [LiteralValue withValue:r.val type:LTNumber loc:r.loc];
-        return r;
-    }];
-    NSCharacterSet *alphaOnly = [NSCharacterSet characterSetWithCharactersInString:@"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"];
-    NSCharacterSet *notWhitespace = [[NSCharacterSet whitespaceCharacterSet] invertedSet];
-    ZKParser *literalToken = [[f seq:@[
-        [f characters:alphaOnly name:@"named literal" min:1],
-        [f characters:notWhitespace name:@"named literal" min:0]]] onMatch:^ParserResult *(ArrayParserResult *r) {
-        NSString *v = r.child[0].val;
-        if (![r childIsNull:1]) {
-            v = [v stringByAppendingString:r.child[1].val];
-        }
-        r.val = [LiteralValue withValue:v type:LTToken loc:r.loc];
-        return r;
-    }];
-    ZKParser *literalValue = [f oneOf:@[literalStringValue, literalNullValue, literalTrueValue, literalFalseValue, literalNumberValue, literalToken]];
-    
+    ZKParser *literalValue = [self literalValue:f];
     ZKParser *baseExpr = [[f seq:@[field, maybeWs, operator, maybeWs, literalValue]] onMatch:^ParserResult *(ArrayParserResult *r) {
         r.val = [ComparisonExpr left:r.child[0].val op:[r.child[2] posString] right:r.child[4].val loc:r.loc];
         return r;
     }];
-
 
     // use parserRef so that we can set up the recursive decent for (...)
     // be careful not to use oneOf with it as that will recurse infinitly because it checks all branches.
@@ -210,6 +210,7 @@
     }];
     return selectStmt;
 }
+
 
 @end
 
