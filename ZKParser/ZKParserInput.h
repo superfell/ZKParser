@@ -26,7 +26,7 @@ typedef enum ZKCaseSensitivity {
 
 @property (assign) NSUInteger pos;
 -(NSUInteger)length;    // remaining length
--(NSString *)value;
+-(NSString *)value;     // remaining input text
 
 -(BOOL)hasMoreInput;
 -(unichar)currentChar;  // asserts if no more input.
@@ -36,6 +36,7 @@ typedef enum ZKCaseSensitivity {
 
 -(void)rewindTo:(NSUInteger)pos;
 
+-(NSString*)input;
 -(NSString*)valueOfRange:(NSRange)r;
 
 -(ParserResult*)parse:(ZKParser*)parser error:(NSError **)err;

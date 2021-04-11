@@ -99,6 +99,11 @@ ResultMapper setValue(NSObject *val) {
 @interface ZKParserDecimal : ZKSingularParser
 @end
 
+@interface ZKParserRegex : ZKSingularParser
+@property (strong,nonatomic) NSRegularExpression *regex;
+@property (strong,nonatomic) NSString *name;
+@end
+
 @interface ZKParserFirstOf : ZKSingularParser
 @property (strong,nonatomic) NSArray<ZKParser*>* items;
 @end
@@ -333,6 +338,32 @@ ResultMapper setValue(NSObject *val) {
 
 @end
 
+@implementation ZKParserRegex
+
++(instancetype)with:(NSRegularExpression*)regex name:(NSString*)name {
+    ZKParserRegex *p = [self new];
+    p.regex = regex;
+    p.name = name;
+    return p;
+}
+
+-(ParserResult *)parseImpl:(ZKParserInput*)input error:(NSError **)err {
+    NSRange match = [self.regex rangeOfFirstMatchInString:input.input options:NSMatchingAnchored range:NSMakeRange(input.pos, input.length)];
+    if (NSEqualRanges(NSMakeRange(NSNotFound,0), match)) {
+        *err = [NSError errorWithDomain:@"Parser"
+                                  code:7
+                              userInfo:@{
+                                  NSLocalizedDescriptionKey:[NSString stringWithFormat:@"expecting a %@ at position %lu", self.name, input.pos+1],
+                                  @"Position": @(input.pos+1)
+                              }];
+        return nil;
+    }
+    input.pos += match.length;
+    return [ParserResult result:[input valueOfRange:match] loc:match];
+}
+
+@end
+
 @implementation ZKParserFirstOf
 
 +(instancetype)firstOf:(NSArray<ZKParser*>*)opts {
@@ -556,6 +587,10 @@ ResultMapper setValue(NSObject *val) {
 // match a decimal number
 -(ZKSingularParser*)decimalNumber {
     return [ZKParserDecimal new];
+}
+
+-(ZKSingularParser*)regex:(NSRegularExpression*)regex name:(NSString*)name {
+    return [ZKParserRegex with:regex name:name];
 }
 
 -(ZKSingularParser*)firstOf:(NSArray<ZKParser*>*)items {

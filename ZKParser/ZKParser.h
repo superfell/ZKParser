@@ -95,6 +95,9 @@ typedef ParserResult *(^ParseBlock)(ZKParserInput*input,NSError **err);
 // match a decimal number
 -(ZKSingularParser*)decimalNumber;
 
+// match a regular expression. Be care to ensure that you anchor the regex to the start of the string.
+-(ZKSingularParser*)regex:(NSRegularExpression*)regex name:(NSString*)name;
+
 // match the supplied sequence of parsers.
 -(ZKArrayParser*)seq:(NSArray<ZKParser*>*)items;
 

@@ -18,7 +18,7 @@
 @end
 
 @interface ZKParserInput()
-@property (assign) NSString *input;
+@property (strong,nonatomic) NSString *input;
 @end
 
 @implementation ZKParserInput

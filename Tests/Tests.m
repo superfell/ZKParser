@@ -242,6 +242,29 @@ ParserResult *r(id val, NSInteger start, NSInteger count) {
     XCTAssertEqualObjects(@"expecting a decimal at position 1", err.localizedDescription);
 }
 
+-(void)testRegex {
+    NSError *err = nil;
+    NSRegularExpression *re = [NSRegularExpression regularExpressionWithPattern:@"\\d\\d-\\d\\d"
+                                                                        options:NSRegularExpressionCaseInsensitive
+                                                                          error:&err];
+    XCTAssertNil(err);
+    ZKParser *p = [f regex:re name:@"number"];
+    ZKParserInput *i = [ZKParserInput withInput:@"ABC20-30DEF"];
+    [p parse:i error:&err];
+    XCTAssertEqualObjects(@"expecting a number at position 1", err.localizedDescription);
+    i.pos = 3; // something else consumed ABC;
+    ParserResult *r = [p parse:i error:&err];
+    XCTAssertNil(err);
+    XCTAssertEqualObjects(@"20-30", r.val);
+    XCTAssertTrue(NSEqualRanges(NSMakeRange(3,5), r.loc));
+    XCTAssertEqualObjects(@"DEF", i.value);
+    
+    i.pos = 4;
+    r = [p parse:i error:&err];
+    XCTAssertNil(r);
+    XCTAssertEqualObjects(@"expecting a number at position 5", err.localizedDescription);
+}
+
 -(void)testOneOrMore {
     ZKParser* bob = [[f eq:@"Bob" case:CaseSensitive] onMatch:^ParserResult *(ParserResult *m) {
         m.val = @"B";
