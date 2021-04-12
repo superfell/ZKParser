@@ -7,7 +7,7 @@
 //
 
 #import "Soql.h"
-#import "ZKParser.h"
+#import "ZKBaseParser.h"
 
 void append_sep(NSMutableString *q, NSArray *a, NSString *sep) {
     BOOL first = YES;

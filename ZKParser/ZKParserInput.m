@@ -6,12 +6,12 @@
 //  Copyright © 2021 Simon Fell. All rights reserved.
 //
 
-#import "ZKParser.h"
+#import "ZKBaseParser.h"
 
 
 @implementation NSString(ZKParsing)
 
--(NSObject*)parse:(ZKParser*)p error:(NSError **)err {
+-(NSObject*)parse:(ZKBaseParser*)p error:(NSError **)err {
     return [[ZKParserInput withInput:self] parse:p error:err];
 }
 
@@ -77,7 +77,7 @@
     self.pos = pos;
 }
 
--(NSObject *)parse:(ZKParser*)p error:(NSError **)err {
+-(NSObject *)parse:(ZKBaseParser*)p error:(NSError **)err {
     *err = nil;
     NSObject *res = [p parse:self error:err];
     if (self.length > 0 && *err == nil) {

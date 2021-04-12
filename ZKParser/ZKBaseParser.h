@@ -45,27 +45,27 @@ ParserResult * pickVals(ArrayParserResult*r);
 ResultMapper setValue(NSObject *val);
 
 
-@interface ZKParser : NSObject
+@interface ZKBaseParser : NSObject
 -(ParserResult *)parse:(ZKParserInput*)input error:(NSError **)err;
 @end
 
 // All parsers that return a single item should extend this.
-@interface ZKSingularParser : ZKParser
+@interface ZKSingularParser : ZKBaseParser
 // Sets the supplied mapper block, which will be called if the parse is successfull.
 // returns the parser to make it easer to chain onMatch calls to new parsers.
 -(instancetype)onMatch:(ResultMapper)block;
 @end
 
 // All parsers that return an array of results should extend this.
-@interface ZKArrayParser: ZKParser
+@interface ZKArrayParser: ZKBaseParser
 -(instancetype)onMatch:(ArrayResultMapper)block;
 @end
 
 // ParserRef lets you pass a parser to another parser, and later
 // change the actual parser in use. Useful for dealing with
 // recursive definitions.
-@interface ZKParserRef : ZKParser
-@property (strong,nonatomic) ZKParser *parser;
+@interface ZKParserRef : ZKBaseParser
+@property (strong,nonatomic) ZKBaseParser *parser;
 @end
 
 typedef ParserResult *(^ParseBlock)(ZKParserInput*input,NSError **err);
@@ -99,26 +99,26 @@ typedef ParserResult *(^ParseBlock)(ZKParserInput*input,NSError **err);
 -(ZKSingularParser*)regex:(NSRegularExpression*)regex name:(NSString*)name;
 
 // match the supplied sequence of parsers.
--(ZKArrayParser*)seq:(NSArray<ZKParser*>*)items;
+-(ZKArrayParser*)seq:(NSArray<ZKBaseParser*>*)items;
 
 // selects the first item from the list that matches
--(ZKSingularParser*)firstOf:(NSArray<ZKParser*>*)items;
+-(ZKSingularParser*)firstOf:(NSArray<ZKBaseParser*>*)items;
 
 // tokens is a whitespace separated list of tokens, returns the matching token.
 -(ZKSingularParser*)oneOfTokens:(NSString *)tokens;
 
 // selects the item from the list that has the longest match, all items are evaluated.
--(ZKSingularParser*)oneOf:(NSArray<ZKParser*>*)items;
+-(ZKSingularParser*)oneOf:(NSArray<ZKBaseParser*>*)items;
 
--(ZKArrayParser*)zeroOrMore:(ZKParser*)p;
--(ZKArrayParser*)oneOrMore:(ZKParser*)p;
--(ZKArrayParser*)zeroOrMore:(ZKParser*)p separator:(ZKParser*)sep;
--(ZKArrayParser*)oneOrMore:(ZKParser*)p separator:(ZKParser*)sep;
--(ZKArrayParser*)zeroOrMore:(ZKParser*)p separator:(ZKParser*)sep max:(NSUInteger)maxItems;
--(ZKArrayParser*)oneOrMore:(ZKParser*)p separator:(ZKParser*)sep max:(NSUInteger)maxItems;
+-(ZKArrayParser*)zeroOrMore:(ZKBaseParser*)p;
+-(ZKArrayParser*)oneOrMore:(ZKBaseParser*)p;
+-(ZKArrayParser*)zeroOrMore:(ZKBaseParser*)p separator:(ZKBaseParser*)sep;
+-(ZKArrayParser*)oneOrMore:(ZKBaseParser*)p separator:(ZKBaseParser*)sep;
+-(ZKArrayParser*)zeroOrMore:(ZKBaseParser*)p separator:(ZKBaseParser*)sep max:(NSUInteger)maxItems;
+-(ZKArrayParser*)oneOrMore:(ZKBaseParser*)p separator:(ZKBaseParser*)sep max:(NSUInteger)maxItems;
 
--(ZKSingularParser*)zeroOrOne:(ZKParser*)p;
--(ZKSingularParser*)zeroOrOne:(ZKParser*)p ignoring:(BOOL(^)(NSObject*))ignoreBlock;
+-(ZKSingularParser*)zeroOrOne:(ZKBaseParser*)p;
+-(ZKSingularParser*)zeroOrOne:(ZKBaseParser*)p ignoring:(BOOL(^)(NSObject*))ignoreBlock;
 
 // Constructs a new Parser instance from the supplied block
 -(ZKSingularParser*)fromBlock:(ParseBlock)parser;

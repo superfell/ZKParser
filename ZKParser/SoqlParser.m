@@ -8,7 +8,7 @@
 
 #import "SoqlParser.h"
 #import "Soql.h"
-#import "ZKParser.h"
+#import "ZKBaseParser.h"
 
 @implementation ParserResult (Soql)
 -(PositionedString*)posString {
@@ -17,7 +17,7 @@
 @end
 
 @interface SoqlParser()
-@property (strong,nonatomic) ZKParser *parser;
+@property (strong,nonatomic) ZKBaseParser *parser;
 @end
 
 @implementation SoqlParser
@@ -84,21 +84,21 @@
     }];
 }
 
--(ZKParser*)literalValue:(ZKParserFactory*)f {
-    ZKParser *literalStringValue = [self literalStringValue:f];
-    ZKParser *literalNullValue = [[f eq:@"null"] onMatch:^ParserResult *(ParserResult *r) {
+-(ZKBaseParser*)literalValue:(ZKParserFactory*)f {
+    ZKBaseParser *literalStringValue = [self literalStringValue:f];
+    ZKBaseParser *literalNullValue = [[f eq:@"null"] onMatch:^ParserResult *(ParserResult *r) {
         r.val = [LiteralValue withValue:[NSNull null] type:LTNull loc:r.loc];
         return r;
     }];
-    ZKParser *literalTrueValue = [[f eq:@"true"] onMatch:^ParserResult *(ParserResult *r) {
+    ZKBaseParser *literalTrueValue = [[f eq:@"true"] onMatch:^ParserResult *(ParserResult *r) {
         r.val = [LiteralValue withValue:@TRUE type:LTBool loc:r.loc];
         return r;
     }];
-    ZKParser *literalFalseValue = [[f eq:@"false"] onMatch:^ParserResult *(ParserResult *r) {
+    ZKBaseParser *literalFalseValue = [[f eq:@"false"] onMatch:^ParserResult *(ParserResult *r) {
         r.val = [LiteralValue withValue:@FALSE type:LTBool loc:r.loc];
         return r;
     }];
-    ZKParser *literalNumberValue = [[f decimalNumber] onMatch:^ParserResult *(ParserResult *r) {
+    ZKBaseParser *literalNumberValue = [[f decimalNumber] onMatch:^ParserResult *(ParserResult *r) {
         r.val = [LiteralValue withValue:r.val type:LTNumber loc:r.loc];
         return r;
     }];
@@ -110,7 +110,7 @@
     NSISO8601DateFormatter *dfDateTime = [NSISO8601DateFormatter new];
     NSISO8601DateFormatter *dfDate = [NSISO8601DateFormatter new];
     dfDate.formatOptions = NSISO8601DateFormatWithFullDate | NSISO8601DateFormatWithDashSeparatorInDate;
-    ZKParser *literalDateTimeValue = [[f regex:dateTime name:@"date/time literal"] onMatch:^ParserResult *(ParserResult *r) {
+    ZKBaseParser *literalDateTimeValue = [[f regex:dateTime name:@"date/time literal"] onMatch:^ParserResult *(ParserResult *r) {
         NSString *dt = r.val;
         if (dt.length == 10) {
             r.val = [LiteralValue withValue:[dfDate dateFromString:dt] type:LTDate loc:r.loc];
@@ -123,15 +123,15 @@
                                                                            options:NSRegularExpressionCaseInsensitive
                                                                              error:&err];
     NSAssert(err == nil, @"failed to compile regex %@", err);
-    ZKParser *literalToken = [[f regex:token name:@"named literal"] onMatch:^ParserResult *(ParserResult *r) {
+    ZKBaseParser *literalToken = [[f regex:token name:@"named literal"] onMatch:^ParserResult *(ParserResult *r) {
         r.val = [LiteralValue withValue:r.val type:LTToken loc:r.loc];
         return r;
     }];
-    ZKParser *literalValue = [f oneOf:@[literalStringValue, literalNullValue, literalTrueValue, literalFalseValue, literalNumberValue, literalDateTimeValue, literalToken]];
+    ZKBaseParser *literalValue = [f oneOf:@[literalStringValue, literalNullValue, literalTrueValue, literalFalseValue, literalNumberValue, literalDateTimeValue, literalToken]];
     return literalValue;
 }
 
--(ZKParser*)buildParser {
+-(ZKBaseParser*)buildParser {
     ZKParserFactory *f = [ZKParserFactory new];
     f.defaultCaseSensitivity = CaseInsensitive;
 
@@ -142,24 +142,24 @@
         NSString *s = (NSString *)v;
         return [keywords containsObject:[s uppercaseString]];
     };
-    ZKParser* ws = [f characters:[NSCharacterSet whitespaceAndNewlineCharacterSet] name:@"whitespace" min:1];
-    ZKParser* maybeWs = [f characters:[NSCharacterSet whitespaceAndNewlineCharacterSet] name:@"whitespace" min:0];
-    ZKParser* commaSep = [f seq:@[maybeWs, [f eq:@","], maybeWs]];
-    ZKParser* ident = [f characters:[NSCharacterSet characterSetWithCharactersInString:@"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_"]
+    ZKBaseParser* ws = [f characters:[NSCharacterSet whitespaceAndNewlineCharacterSet] name:@"whitespace" min:1];
+    ZKBaseParser* maybeWs = [f characters:[NSCharacterSet whitespaceAndNewlineCharacterSet] name:@"whitespace" min:0];
+    ZKBaseParser* commaSep = [f seq:@[maybeWs, [f eq:@","], maybeWs]];
+    ZKBaseParser* ident = [f characters:[NSCharacterSet characterSetWithCharactersInString:@"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_"]
                                name:@"identifier"
                                 min:1];
     
     // SELECT LIST
     ZKParserRef *selectStmt = [f parserRef];
-    ZKParser *alias = [f zeroOrOne:[[f seq:@[ws, ident]] onMatch:pick(1)] ignoring:ignoreKeywords];
-    ZKParser* field = [[f seq:@[[f oneOrMore:ident separator:[f eq:@"."]], alias]] onMatch:^ParserResult *(ArrayParserResult *m) {
+    ZKBaseParser *alias = [f zeroOrOne:[[f seq:@[ws, ident]] onMatch:pick(1)] ignoring:ignoreKeywords];
+    ZKBaseParser* field = [[f seq:@[[f oneOrMore:ident separator:[f eq:@"."]], alias]] onMatch:^ParserResult *(ArrayParserResult *m) {
         m.val = [SelectField name:[PositionedString fromArray:m.child[0].val]
                             alias:([m childIsNull:1] ? nil : [m.child[1] posString])
                               loc:m.loc];
         return m;
     }];
     ZKParserRef *fieldOrFunc = [f parserRef];
-    ZKParser* func = [[f seq:@[ident,
+    ZKBaseParser* func = [[f seq:@[ident,
                               maybeWs,
                               [f eq:@"("],
                               maybeWs,
@@ -177,16 +177,16 @@
     }];
     
     fieldOrFunc.parser = [f firstOf:@[func, field]];
-    ZKParser *nestedSelectStmt = [[f seq:@[[f eq:@"("], selectStmt, [f eq:@")"]]] onMatch:^ParserResult*(ArrayParserResult*r) {
+    ZKBaseParser *nestedSelectStmt = [[f seq:@[[f eq:@"("], selectStmt, [f eq:@")"]]] onMatch:^ParserResult*(ArrayParserResult*r) {
         SelectQuery *q = r.child[1].val;
         r.val = [NestedSelectQuery from:q];
         return r;
     }];
-    ZKParser* selectExprs = [[f oneOrMore:[f firstOf:@[func, field, nestedSelectStmt]] separator:commaSep] onMatch:^ParserResult *(ArrayParserResult *r) {
+    ZKBaseParser* selectExprs = [[f oneOrMore:[f firstOf:@[func, field, nestedSelectStmt]] separator:commaSep] onMatch:^ParserResult *(ArrayParserResult *r) {
         r.val = r.childVals;
         return r;
     }];
-    ZKParser *countOnly = [[f seq:@[[f eq:@"count"], maybeWs, [f eq:@"("], maybeWs, [f eq:@")"]]] onMatch:^ParserResult *(ArrayParserResult *r) {
+    ZKBaseParser *countOnly = [[f seq:@[[f eq:@"count"], maybeWs, [f eq:@"("], maybeWs, [f eq:@")"]]] onMatch:^ParserResult *(ArrayParserResult *r) {
         // Should we just let count() be handled by the regular func matcher? and not deal with the fact it can only
         // appear on its own.
         r.val =@[[SelectFunc name:[r.child[0] posString] args:@[] alias:nil loc:r.loc]];
@@ -195,13 +195,13 @@
     selectExprs = [f oneOf:@[selectExprs, countOnly]];
 
     /// FROM
-    ZKParser *objectRef = [[f seq:@[ident, alias]] onMatch:^ParserResult *(ArrayParserResult *m) {
+    ZKBaseParser *objectRef = [[f seq:@[ident, alias]] onMatch:^ParserResult *(ArrayParserResult *m) {
         m.val = [SObjectRef name:m.child[0].posString
                            alias:[m childIsNull:1] ? nil : m.child[1].posString
                              loc:m.loc];
         return m;
     }];
-    ZKParser *objectRefs = [[f seq:@[objectRef, [f zeroOrOne:
+    ZKBaseParser *objectRefs = [[f seq:@[objectRef, [f zeroOrOne:
                                 [[f seq:@[commaSep, [f oneOrMore:field separator:commaSep]]] onMatch:pick(1)]]]]
                           onMatch:^ParserResult *(ArrayParserResult*r) {
         r.val = [From sobject:r.child[0].val
@@ -211,11 +211,11 @@
     }];
     
     /// WHERE
-    ZKParser *operator = [f oneOfTokens:@"< <= > >= = != LIKE"];
-    ZKParser *opIncExcl = [f oneOfTokens:@"INCLUDES EXCLUDES"];
-    ZKParser *opInNotIn = [f oneOf:@[[f eq:@"IN"], [[f seq:@[[f eq:@"NOT"], ws, [f eq:@"IN"]]] onMatch:setValue(@"NOT IN")]]];
-    ZKParser *literalValue = [self literalValue:f];
-    ZKParser *literalStringList = [[f seq:@[    [f eq:@"("], maybeWs,
+    ZKBaseParser *operator = [f oneOfTokens:@"< <= > >= = != LIKE"];
+    ZKBaseParser *opIncExcl = [f oneOfTokens:@"INCLUDES EXCLUDES"];
+    ZKBaseParser *opInNotIn = [f oneOf:@[[f eq:@"IN"], [[f seq:@[[f eq:@"NOT"], ws, [f eq:@"IN"]]] onMatch:setValue(@"NOT IN")]]];
+    ZKBaseParser *literalValue = [self literalValue:f];
+    ZKBaseParser *literalStringList = [[f seq:@[    [f eq:@"("], maybeWs,
                                                 [f oneOrMore:[self literalStringValue:f] separator:commaSep],
                                                 maybeWs, [f eq:@")"]]]
                                    onMatch:^ParserResult*(ArrayParserResult*r) {
@@ -223,12 +223,12 @@
         r.val = [LiteralValueArray withValues:vals loc:r.loc];
         return r;
     }];
-    ZKParser *operatorRHS = [f oneOf:@[
+    ZKBaseParser *operatorRHS = [f oneOf:@[
         [f seq:@[operator, maybeWs, literalValue]],
         [f seq:@[opIncExcl, maybeWs, literalStringList]],
         [f seq:@[opInNotIn, maybeWs, [f oneOf:@[literalStringList, nestedSelectStmt]]]]]];
 
-    ZKParser *baseExpr = [[f seq:@[fieldOrFunc, maybeWs, operatorRHS]] onMatch:^ParserResult *(ArrayParserResult *r) {
+    ZKBaseParser *baseExpr = [[f seq:@[fieldOrFunc, maybeWs, operatorRHS]] onMatch:^ParserResult *(ArrayParserResult *r) {
         ArrayParserResult *opRhs = (ArrayParserResult*)r.child[2];
         r.val = [ComparisonExpr left:r.child[0].val op:[opRhs.child[0] posString] right:opRhs.child[2].val loc:r.loc];
         return r;
@@ -237,9 +237,9 @@
     // use parserRef so that we can set up the recursive decent for (...)
     // be careful not to use oneOf with it as that will recurse infinitly because it checks all branches.
     ZKParserRef *exprList = [f parserRef];
-    ZKParser *parens = [[f seq:@[[f eq:@"("], maybeWs, exprList, maybeWs, [f eq:@")"]]] onMatch:pick(2)];
-    ZKParser *andOr = [[f seq:@[ws, [f oneOfTokens:@"AND OR"], ws]] onMatch:pick(1)];
-    ZKParser *not = [f seq:@[[f eq:@"NOT"], maybeWs]];
+    ZKBaseParser *parens = [[f seq:@[[f eq:@"("], maybeWs, exprList, maybeWs, [f eq:@")"]]] onMatch:pick(2)];
+    ZKBaseParser *andOr = [[f seq:@[ws, [f oneOfTokens:@"AND OR"], ws]] onMatch:pick(1)];
+    ZKBaseParser *not = [f seq:@[[f eq:@"NOT"], maybeWs]];
     exprList.parser = [[f seq:@[[f zeroOrOne:not],[f firstOf:@[parens, baseExpr]], [f zeroOrOne:[f seq:@[andOr, exprList]]]]] onMatch:^ParserResult*(ArrayParserResult*r) {
         Expr *expr = r.child[1].val;
         if (![r childIsNull:2]) {
@@ -254,20 +254,20 @@
         r.val = expr;
         return r;
     }];
-    ZKParser *where = [f zeroOrOne:[[f seq:@[ws ,[f eq:@"WHERE"], ws, exprList]] onMatch:pick(3)]];
+    ZKBaseParser *where = [f zeroOrOne:[[f seq:@[ws ,[f eq:@"WHERE"], ws, exprList]] onMatch:pick(3)]];
     
     /// FILTER SCOPE
-    ZKParser *filterScope = [f zeroOrOne:[[f seq:@[ws, [f eq:@"USING"], ws, [f eq:@"SCOPE"], ws, ident]] onMatch:pick(5)]];
+    ZKBaseParser *filterScope = [f zeroOrOne:[[f seq:@[ws, [f eq:@"USING"], ws, [f eq:@"SCOPE"], ws, ident]] onMatch:pick(5)]];
 
     
     /// ORDER BY
-    ZKParser *asc  = [[f eq:@"ASC"] onMatch:setValue(@YES)];
-    ZKParser *desc = [[f eq:@"DESC"] onMatch:setValue(@NO)];
-    ZKParser *ascDesc = [[f seq:@[ws, [f oneOf:@[asc,desc]]]] onMatch:pick(1)];
-    ZKParser *nulls = [[f seq:@[ws, [f eq:@"NULLS"], ws,
+    ZKBaseParser *asc  = [[f eq:@"ASC"] onMatch:setValue(@YES)];
+    ZKBaseParser *desc = [[f eq:@"DESC"] onMatch:setValue(@NO)];
+    ZKBaseParser *ascDesc = [[f seq:@[ws, [f oneOf:@[asc,desc]]]] onMatch:pick(1)];
+    ZKBaseParser *nulls = [[f seq:@[ws, [f eq:@"NULLS"], ws,
                                 [f oneOf:@[[[f eq:@"FIRST"] onMatch:setValue(@(NullsFirst))], [[f eq:@"LAST"] onMatch:setValue(@(NullsLast))]]]]]
                      onMatch:pick(3)];
-    ZKParser *orderByField = [[f seq:@[field, [f zeroOrOne:ascDesc], [f zeroOrOne:nulls]]] onMatch:^ParserResult*(ArrayParserResult*m) {
+    ZKBaseParser *orderByField = [[f seq:@[field, [f zeroOrOne:ascDesc], [f zeroOrOne:nulls]]] onMatch:^ParserResult*(ArrayParserResult*m) {
         BOOL asc = YES;
         NSInteger nulls = NullsDefault;
         if (![m childIsNull:1]) {
@@ -279,7 +279,7 @@
         m.val = [OrderBy field:m.child[0].val asc:asc nulls:nulls loc:m.loc];
         return m;
     }];
-    ZKParser *orderByFields = [f zeroOrOne:[[f seq:@[ws, [f eq:@"ORDER"], ws, [f eq:@"BY"], ws, [f oneOrMore:orderByField separator:commaSep]]] onMatch:^ParserResult*(ArrayParserResult*r) {
+    ZKBaseParser *orderByFields = [f zeroOrOne:[[f seq:@[ws, [f eq:@"ORDER"], ws, [f eq:@"BY"], ws, [f oneOrMore:orderByField separator:commaSep]]] onMatch:^ParserResult*(ArrayParserResult*r) {
         
         // loc for OrderBys is just the ORDER BY keyword. TODO, we probably don't want that.
         r.val = [OrderBys by:[r.child[5].val valueForKey:@"val"] loc:NSUnionRange(r.child[1].loc, r.child[3].loc)];

@@ -7,7 +7,7 @@
 //
 
 #import <XCTest/XCTest.h>
-#import "ZKParser.h"
+#import "ZKBaseParser.h"
 
 @interface Tests : XCTestCase
 
@@ -27,7 +27,7 @@ ZKParserFactory *f = nil;
 }
 
 -(void)testExactMatch {
-    ZKParser* p = [[f eq:@"Bob" case:CaseSensitive] onMatch:^ParserResult *(ParserResult *m) {
+    ZKBaseParser* p = [[f eq:@"Bob" case:CaseSensitive] onMatch:^ParserResult *(ParserResult *m) {
         XCTAssertEqualObjects(m.val, @"Bob");
         XCTAssertEqual(m.loc.location, 0);
         XCTAssertEqual(m.loc.length, 3);
@@ -52,7 +52,7 @@ ParserResult *r(id val, NSInteger start, NSInteger count) {
 }
 
 -(void)testCaseInsensitiveMatch {
-    ZKParser* p = [f eq:@"alice" case:CaseInsensitive];
+    ZKBaseParser* p = [f eq:@"alice" case:CaseInsensitive];
     NSError *err = nil;
     XCTAssertEqualObjects(r(@"ALICE",0,5), [@"ALICE" parse:p error:&err]);
     XCTAssertNil(err);    
@@ -63,13 +63,13 @@ ParserResult *r(id val, NSInteger start, NSInteger count) {
 }
 
 -(void)testDefaultCaseSensitivity {
-    ZKParser* p = [f eq:@"bob"];
+    ZKBaseParser* p = [f eq:@"bob"];
     NSError *err = nil;
     XCTAssertEqualObjects(r(@"bob",0,3), [@"bob" parse:p error:&err]);
     XCTAssertNil([@"boB" parse:p error:&err]);
     XCTAssertEqualObjects(@"expecting 'bob' at position 1", err.localizedDescription);
     f.defaultCaseSensitivity = CaseInsensitive;
-    ZKParser* i = [f eq:@"bob"];
+    ZKBaseParser* i = [f eq:@"bob"];
     XCTAssertEqualObjects(r(@"bob",0,3), [@"bob" parse:i error:&err]);
     XCTAssertEqualObjects(r(@"Bob",0,3), [@"Bob" parse:i error:&err]);
     XCTAssertEqualObjects(r(@"BOB",0,3), [@"BOB" parse:i error:&err]);
@@ -80,19 +80,19 @@ ParserResult *r(id val, NSInteger start, NSInteger count) {
 }
 
 -(void)testOneOf {
-    ZKParser* bob = [[f eq:@"Bob" case:CaseSensitive] onMatch:^ParserResult *(ParserResult *m) {
+    ZKBaseParser* bob = [[f eq:@"Bob" case:CaseSensitive] onMatch:^ParserResult *(ParserResult *m) {
         m.val = @"B";
         return m;
     }];
-    ZKParser* eve = [[f eq:@"Eve" case:CaseSensitive] onMatch:^ParserResult *(ParserResult *m) {
+    ZKBaseParser* eve = [[f eq:@"Eve" case:CaseSensitive] onMatch:^ParserResult *(ParserResult *m) {
         m.val = @"E";
         return m;
     }];
-    ZKParser* bobby = [[f eq:@"Bobby" case:CaseSensitive] onMatch:^ParserResult *(ParserResult *m) {
+    ZKBaseParser* bobby = [[f eq:@"Bobby" case:CaseSensitive] onMatch:^ParserResult *(ParserResult *m) {
         m.val = @"BB";
         return m;
     }];
-    ZKParser* p = [f oneOf:@[bobby,bob,eve]];
+    ZKBaseParser* p = [f oneOf:@[bobby,bob,eve]];
     NSError *err = nil;
     XCTAssertEqualObjects(@"B", [@"Bob"  parse:p error:&err].val);
     XCTAssertEqualObjects(@"E", [@"Eve"  parse:p error:&err].val);
@@ -101,19 +101,19 @@ ParserResult *r(id val, NSInteger start, NSInteger count) {
 }
 
 -(void)testSeq {
-    ZKParser* bob = [[f eq:@"Bob" case:CaseSensitive] onMatch:^ParserResult *(ParserResult *m) {
+    ZKBaseParser* bob = [[f eq:@"Bob" case:CaseSensitive] onMatch:^ParserResult *(ParserResult *m) {
         m.val = @"B";
         return m;
     }];
-    ZKParser* eve = [[f eq:@"Eve" case:CaseSensitive] onMatch:^ParserResult *(ParserResult *m) {
+    ZKBaseParser* eve = [[f eq:@"Eve" case:CaseSensitive] onMatch:^ParserResult *(ParserResult *m) {
         m.val = @"E";
         return m;
     }];
-    ZKParser* bobby = [[f eq:@"Bobby" case:CaseSensitive] onMatch:^ParserResult *(ParserResult *m) {
+    ZKBaseParser* bobby = [[f eq:@"Bobby" case:CaseSensitive] onMatch:^ParserResult *(ParserResult *m) {
         m.val = @"BB";
         return m;
     }];
-    ZKParser* p = [f seq:@[bob,eve,bobby]];
+    ZKBaseParser* p = [f seq:@[bob,eve,bobby]];
     NSObject *exp = @[r(@"B",0,3),r(@"E",3,3),r(@"BB",6,5)];
     NSError *err = nil;
     XCTAssertEqualObjects(exp, [@"BobEveBobby" parse:p error:&err].val);
@@ -127,7 +127,7 @@ ParserResult *r(id val, NSInteger start, NSInteger count) {
 }
 
 -(void)testWhitespace {
-    ZKParser* ws = [f whitespace];
+    ZKBaseParser* ws = [f whitespace];
     ZKParserInput *i = [ZKParserInput withInput:@" Hello"];
     NSError *err = nil;
     [ws parse:i error:&err];
@@ -146,7 +146,7 @@ ParserResult *r(id val, NSInteger start, NSInteger count) {
 }
 
 -(void)testCharacterSet {
-    ZKParser* p = [f characters:[NSCharacterSet characterSetWithCharactersInString:@"ABC"] name:@"Id" min:3];
+    ZKBaseParser* p = [f characters:[NSCharacterSet characterSetWithCharactersInString:@"ABC"] name:@"Id" min:3];
     NSError *err = nil;
     ZKParserInput *i = [ZKParserInput withInput:@"AAAABC"];
     NSObject *res = [p parse:i error:&err];
@@ -165,7 +165,7 @@ ParserResult *r(id val, NSInteger start, NSInteger count) {
 
 -(void)testInteger {
     NSError *err = nil;
-    ZKParser *p = [f integerNumber];
+    ZKBaseParser *p = [f integerNumber];
     ParserResult *r = [@"123" parse:p error:&err];
     XCTAssertEqualObjects(@(123), r.val);
     XCTAssertEqual(0, r.loc.location);
@@ -196,7 +196,7 @@ ParserResult *r(id val, NSInteger start, NSInteger count) {
 
 -(void)testDecimal {
     NSError *err = nil;
-    ZKParser *p = [f decimalNumber];
+    ZKBaseParser *p = [f decimalNumber];
     ParserResult *r = [@"123" parse:p error:&err];
     XCTAssertEqualObjects(@(123), r.val);
     XCTAssertEqual(0, r.loc.location);
@@ -248,7 +248,7 @@ ParserResult *r(id val, NSInteger start, NSInteger count) {
                                                                         options:NSRegularExpressionCaseInsensitive
                                                                           error:&err];
     XCTAssertNil(err);
-    ZKParser *p = [f regex:re name:@"number"];
+    ZKBaseParser *p = [f regex:re name:@"number"];
     ZKParserInput *i = [ZKParserInput withInput:@"ABC20-30DEF"];
     [p parse:i error:&err];
     XCTAssertEqualObjects(@"expecting a number at position 1", err.localizedDescription);
@@ -266,11 +266,11 @@ ParserResult *r(id val, NSInteger start, NSInteger count) {
 }
 
 -(void)testOneOrMore {
-    ZKParser* bob = [[f eq:@"Bob" case:CaseSensitive] onMatch:^ParserResult *(ParserResult *m) {
+    ZKBaseParser* bob = [[f eq:@"Bob" case:CaseSensitive] onMatch:^ParserResult *(ParserResult *m) {
         m.val = @"B";
         return m;
     }];
-    ZKParser* bobs = [f oneOrMore:bob];
+    ZKBaseParser* bobs = [f oneOrMore:bob];
     NSObject *exp = @[r(@"B",0,3),r(@"B",3,3),r(@"B",6,3)];
     NSError *err = nil;
     XCTAssertEqualObjects(exp, [bobs parse:[ZKParserInput withInput:@"BobBobBob"] error:&err].val);
@@ -288,8 +288,8 @@ ParserResult *r(id val, NSInteger start, NSInteger count) {
 }
 
 -(void)testZeroOrMore {
-    ZKParser* bob = [f eq:@"Bob"];
-    ZKParser* maybeBobs = [f zeroOrMore:bob];
+    ZKBaseParser* bob = [f eq:@"Bob"];
+    ZKBaseParser* maybeBobs = [f zeroOrMore:bob];
     NSError *err = nil;
     ParserResult *pr = [@"Bob" parse:maybeBobs error:&err];
     XCTAssertEqualObjects(r(@[r(@"Bob",0,3)],0,3), pr);
@@ -303,8 +303,8 @@ ParserResult *r(id val, NSInteger start, NSInteger count) {
     XCTAssertEqualObjects(r(@[r(@"Bob",0,3),r(@"Bob",3,3)],0,6), pr);
     XCTAssertNil(err);
     
-    ZKParser* alice = [f eq:@"Alice"];
-    ZKParser* aliceAndMaybeBobs = [f seq:@[alice, [f whitespace], maybeBobs]];
+    ZKBaseParser* alice = [f eq:@"Alice"];
+    ZKBaseParser* aliceAndMaybeBobs = [f seq:@[alice, [f whitespace], maybeBobs]];
     pr = [@"Alice" parse:aliceAndMaybeBobs error:&err];
     XCTAssertNil(pr);
     XCTAssertEqualObjects(@"expecting whitespace at position 6", err.localizedDescription);
