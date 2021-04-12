@@ -143,7 +143,17 @@ void append(NSMutableString *q, NSArray *a) {
 }
 @end
 
+NSISO8601DateFormatter *dateFormatter = nil;
+NSISO8601DateFormatter *dateTimeFormatter = nil;
+
 @implementation LiteralValue
+
++(void) initialize {
+    dateTimeFormatter = [[NSISO8601DateFormatter alloc] init];
+    dateFormatter = [[NSISO8601DateFormatter alloc] init];
+    dateFormatter.formatOptions = NSISO8601DateFormatWithFullDate | NSISO8601DateFormatWithDashSeparatorInDate;
+}
+
 +(instancetype)withValue:(NSObject *)val type:(LiteralType)t loc:(NSRange)loc {
     LiteralValue *v = [self new];
     v.val = val;
@@ -171,8 +181,14 @@ void append(NSMutableString *q, NSArray *a) {
         case LTToken:
             [dest appendString:[(NSString*)self.val uppercaseString]];
             break;
+        case LTDate:
+            [dest appendString:[dateFormatter stringFromDate:(NSDate*)self.val]];
+            break;
+        case LTDateTime:
+            [dest appendString:[dateTimeFormatter stringFromDate:(NSDate*)self.val]];
+            break;
         default:
-            NSAssert(false, @"unknown type in LiteralValue");
+            NSAssert(false, @"unknown type %d in LiteralValue", self.type);
     }
 }
 @end

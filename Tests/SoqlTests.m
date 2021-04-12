@@ -162,6 +162,21 @@ SoqlParser *p = nil;
     XCTAssertNil(err);
 }
 
+-(void)testDateLiteralTypes {
+    NSError *err = nil;
+    SelectQuery *res = [p parse:@"select id from contact where createdDate >2020-02-03" error:&err];
+    assertStringsEq([res toSoql], @"SELECT id FROM contact WHERE createdDate > 2020-02-03");
+    XCTAssertNil(err);
+
+    res = [p parse:@"select id from contact where createdDate >2020-02-03T12:13:14Z" error:&err];
+    assertStringsEq([res toSoql], @"SELECT id FROM contact WHERE createdDate > 2020-02-03T12:13:14Z");
+    XCTAssertNil(err);
+
+    res = [p parse:@"select id from contact where createdDate >2020-02-03T12:13:14-07:00" error:&err];
+    assertStringsEq([res toSoql], @"SELECT id FROM contact WHERE createdDate > 2020-02-03T19:13:14Z");
+    XCTAssertNil(err);
+}
+
 -(void)testWhere {
     NSError *err = nil;
     SelectQuery *res = [p parse:@"select id from contact where name = 'bob'" error:&err];

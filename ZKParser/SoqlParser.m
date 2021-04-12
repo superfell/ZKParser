@@ -103,6 +103,22 @@
         return r;
     }];
     NSError *err = nil;
+    NSRegularExpression *dateTime = [NSRegularExpression regularExpressionWithPattern:@"\\d\\d\\d\\d-\\d\\d-\\d\\d(?:T\\d\\d:\\d\\d:\\d\\d(?:Z|[+-]\\d\\d:\\d\\d))?"
+                                                                              options:NSRegularExpressionCaseInsensitive
+                                                                                error:&err];
+    NSAssert(err == nil, @"failed to compile regex %@", err);
+    NSISO8601DateFormatter *dfDateTime = [NSISO8601DateFormatter new];
+    NSISO8601DateFormatter *dfDate = [NSISO8601DateFormatter new];
+    dfDate.formatOptions = NSISO8601DateFormatWithFullDate | NSISO8601DateFormatWithDashSeparatorInDate;
+    ZKParser *literalDateTimeValue = [[f regex:dateTime name:@"date/time literal"] onMatch:^ParserResult *(ParserResult *r) {
+        NSString *dt = r.val;
+        if (dt.length == 10) {
+            r.val = [LiteralValue withValue:[dfDate dateFromString:dt] type:LTDate loc:r.loc];
+        } else {
+            r.val = [LiteralValue withValue:[dfDateTime dateFromString:dt] type:LTDateTime loc:r.loc];
+        }
+        return r;
+    }];
     NSRegularExpression *token = [NSRegularExpression regularExpressionWithPattern:@"[a-z]\\S*"
                                                                            options:NSRegularExpressionCaseInsensitive
                                                                              error:&err];
@@ -111,7 +127,7 @@
         r.val = [LiteralValue withValue:r.val type:LTToken loc:r.loc];
         return r;
     }];
-    ZKParser *literalValue = [f oneOf:@[literalStringValue, literalNullValue, literalTrueValue, literalFalseValue, literalNumberValue, literalToken]];
+    ZKParser *literalValue = [f oneOf:@[literalStringValue, literalNullValue, literalTrueValue, literalFalseValue, literalNumberValue, literalDateTimeValue, literalToken]];
     return literalValue;
 }
 
