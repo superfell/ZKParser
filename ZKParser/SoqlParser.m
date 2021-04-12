@@ -157,11 +157,12 @@
                               loc:m.loc];
         return m;
     }];
+    ZKParserRef *selectExpr = [f parserRef];
     ZKParser* func = [[f seq:@[ident,
                               maybeWs,
                               [f eq:@"("],
                               maybeWs,
-                              [f oneOrMore:field separator:commaSep],
+                              [f oneOrMore:selectExpr separator:commaSep],
                               maybeWs,
                               [f eq:@")"],
                               alias
@@ -174,7 +175,7 @@
         return m;
     }];
     
-    ZKParser* selectExpr = [f oneOf:@[field, func]];
+    selectExpr.parser = [f firstOf:@[func, field]];
     ZKParser* selectExprs = [[f oneOrMore:selectExpr separator:commaSep] onMatch:^ParserResult *(ArrayParserResult *r) {
         r.val = r.childVals;
         return r;

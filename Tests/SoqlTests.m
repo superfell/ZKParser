@@ -272,4 +272,15 @@ SoqlParser *p = nil;
     assertStringsEq([res toSoql], @"SELECT Id FROM Task WHERE WhoId NOT IN (SELECT Id FROM Contact WHERE MailingCity = 'Twin Falls')");
     XCTAssertNil(err);
 }
+
+-(void)testNestedFuncs {
+    NSError *err = nil;
+    SelectQuery *res = [p parse:  @"SELECT HOUR_IN_DAY(convertTimezone(CreatedDate)) hour, SUM(Amount) amt FROM Opportunity" error:&err];
+    assertStringsEq([res toSoql], @"SELECT HOUR_IN_DAY(convertTimezone(CreatedDate)) hour,SUM(Amount) amt FROM Opportunity");
+    XCTAssertNil(err);
+    
+    res = [p parse:  @"SELECT HOUR_IN_DAY ( convertTimezone ( CreatedDate ) ) hour, SUM(Amount) amt FROM Opportunity" error:&err];
+    assertStringsEq([res toSoql], @"SELECT HOUR_IN_DAY(convertTimezone(CreatedDate)) hour,SUM(Amount) amt FROM Opportunity");
+    XCTAssertNil(err);
+}
 @end
