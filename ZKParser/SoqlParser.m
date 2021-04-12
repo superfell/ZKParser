@@ -126,8 +126,8 @@
         NSString *s = (NSString *)v;
         return [keywords containsObject:[s uppercaseString]];
     };
-    ZKParser* ws = [f whitespace];
-    ZKParser* maybeWs = [f maybeWhitespace];
+    ZKParser* ws = [f characters:[NSCharacterSet whitespaceAndNewlineCharacterSet] name:@"whitespace" min:1];
+    ZKParser* maybeWs = [f characters:[NSCharacterSet whitespaceAndNewlineCharacterSet] name:@"whitespace" min:0];
     ZKParser* commaSep = [f seq:@[maybeWs, [f eq:@","], maybeWs]];
     ZKParser* ident = [f characters:[NSCharacterSet characterSetWithCharactersInString:@"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_"]
                                name:@"identifier"

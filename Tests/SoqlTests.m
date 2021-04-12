@@ -69,6 +69,13 @@ SoqlParser *p = nil;
     XCTAssertEqualObjects(@"expecting whitespace at position 15", err.localizedDescription);
 }
 
+-(void)testWhitespace {
+    NSError *err = nil;
+    SelectQuery *res = [p parse:@"  \t select \t id from \n account \r\n where id\t=true\n" error:&err];
+    assertStringsEq([res toSoql], @"SELECT id FROM account WHERE id = TRUE");
+    XCTAssertNil(err);
+}
+
 -(void)testFrom {
     NSError *err = nil;
     SelectQuery *res = [p parse:@"select count(id) from contacts c, c.account a" error:&err];
