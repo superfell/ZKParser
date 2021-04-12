@@ -201,7 +201,9 @@ NSISO8601DateFormatter *dateTimeFormatter = nil;
     return a;
 }
 -(void)appendSoql:(NSMutableString *)dest {
+    [dest appendString:@"("];
     append(dest, self.values);
+    [dest appendString:@")"];
 }
 @end
 
@@ -219,11 +221,8 @@ NSISO8601DateFormatter *dateTimeFormatter = nil;
     [self.left appendSoql:dest];
     [dest appendString:@" "];
     [self.op appendSoql:dest];
-    BOOL isListOp = [self.op.val isEqualTo:@"IN"] || [self.op.val isEqualTo:@"NOT IN"] || [self.op.val isEqualTo:@"INCLUDES"] || [self.op.val isEqualTo:@"EXCLUDES"];
     [dest appendString:@" "];
-    if (isListOp) [dest appendString:@"("];
     [self.right appendSoql:dest];
-    if (isListOp) [dest appendString:@")"];
 }
 @end
 
@@ -330,3 +329,22 @@ NSISO8601DateFormatter *dateTimeFormatter = nil;
 }
 @end
 
+@implementation NestedSelectQuery
++(instancetype)from:(SelectQuery*)s {
+    NestedSelectQuery *q = [NestedSelectQuery new];
+    q.selectExprs = s.selectExprs;
+    q.from = s.from;
+    q.filterScope = s.filterScope;
+    q.where = s.where;
+    q.orderBy = s.orderBy;
+    q.offset = s.offset;
+    q.limit = s.limit;
+    q.loc = s.loc;
+    return q;
+}
+-(void)appendSoql:(NSMutableString *)dest {
+    [dest appendString:@"("];
+    [super appendSoql:dest];
+    [dest appendString:@")"];
+}
+@end

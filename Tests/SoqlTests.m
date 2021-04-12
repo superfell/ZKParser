@@ -69,6 +69,17 @@ SoqlParser *p = nil;
     XCTAssertEqualObjects(@"expecting whitespace at position 15", err.localizedDescription);
 }
 
+-(void)testNestedSelectStmt {
+    NSError *err = nil;
+    SelectQuery * res = [p parse:@"SELECT name,(select name from contacts) from account" error:&err];
+    assertStringsEq([res toSoql], @"SELECT name,(SELECT name FROM contacts) FROM account");
+    XCTAssertNil(err);
+    
+    res = [p parse:@"SELECT name,(select name from contacts ) , id , ( select id from notes) from account" error:&err];
+    assertStringsEq([res toSoql], @"SELECT name,(SELECT name FROM contacts),id,(SELECT id FROM notes) FROM account");
+    XCTAssertNil(err);
+}
+
 -(void)testWhitespace {
     NSError *err = nil;
     SelectQuery *res = [p parse:@"  \t select \t id from \n account \r\n where id\t=true\n" error:&err];

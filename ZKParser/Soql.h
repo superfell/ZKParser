@@ -118,3 +118,7 @@ static const NSInteger NullsLast = 3;
 @property (assign,nonatomic) NSInteger limit;
 @property (assign,nonatomic) NSInteger offset;
 @end
+
+@interface NestedSelectQuery : SelectQuery
++(instancetype)from:(SelectQuery*)q;
+@end
