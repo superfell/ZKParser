@@ -201,7 +201,7 @@
         r.val = [LiteralValueArray withValues:vals loc:r.loc];
         return r;
     }];
-    ZKParser *nestedSelectStmt = [[f seq:@[[f eq:@"("], maybeWs, selectStmt, maybeWs, [f eq:@")"]]] onMatch:pick(2)];
+    ZKParser *nestedSelectStmt = [[f seq:@[[f eq:@"("], selectStmt, [f eq:@")"]]] onMatch:pick(1)];
     ZKParser *operatorRHS = [f oneOf:@[
         [f seq:@[operator, maybeWs, literalValue]],
         [f seq:@[opIncExcl, maybeWs, literalStringList]],
@@ -266,14 +266,15 @@
     }]];
 
     /// SELECT
-    selectStmt.parser = [[f seq:@[[f eq:@"SELECT"], ws, selectExprs, ws, [f eq:@"FROM"], ws, objectRefs, filterScope, where, orderByFields]] onMatch:^ParserResult*(ArrayParserResult*m) {
+    selectStmt.parser = [[f seq:@[maybeWs, [f eq:@"SELECT"], ws, selectExprs, ws, [f eq:@"FROM"], ws, objectRefs, filterScope, where, orderByFields, maybeWs]] onMatch:^ParserResult*(ArrayParserResult*m) {
         SelectQuery *q = [SelectQuery new];
-        q.selectExprs = m.child[2].val;
-        q.from = m.child[6].val;
-        q.filterScope = [m childIsNull:7] ? nil : [m.child[7] posString];
-        q.where = [m childIsNull:8] ? nil : m.child[8].val;
-        q.orderBy = [m childIsNull:9] ? [OrderBys new] : m.child[9].val;
+        q.selectExprs = m.child[3].val;
+        q.from = m.child[7].val;
+        q.filterScope = [m childIsNull:8] ? nil : [m.child[8] posString];
+        q.where = [m childIsNull:9] ? nil : m.child[9].val;
+        q.orderBy = [m childIsNull:10] ? [OrderBys new] : m.child[10].val;
         m.val = q;
+        q.loc = m.loc;
         return m;
     }];
     return selectStmt;

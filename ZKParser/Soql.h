@@ -110,7 +110,7 @@ static const NSInteger NullsLast = 3;
 @end
 
 @interface SelectQuery : Expr
-@property (strong,nonatomic) NSArray *selectExprs;
+@property (strong,nonatomic) NSArray<Expr*> *selectExprs;
 @property (strong,nonatomic) From *from;
 @property (strong,nonatomic) PositionedString *filterScope;
 @property (strong,nonatomic) Expr *where;

@@ -125,7 +125,7 @@ SoqlParser *p = nil;
     [p parse:@"select id from contact where city!='o'hare'" error:&err];
     assertStringsEq(err.localizedDescription, @"Unexpected input 'hare'' at position 39");
     [p parse:@"select id from contact where city!='SF" error:&err];
-    assertStringsEq(err.localizedDescription, @"Unexpected input ' where city!='SF' at position 23");
+    assertStringsEq(err.localizedDescription, @"Unexpected input 'where city!='SF' at position 24");
 
     res = [p parse:@"select id from contact where city!=null" error:&err];
     assertStringsEq([res toSoql], @"SELECT id FROM contact WHERE city != NULL");
@@ -225,7 +225,7 @@ SoqlParser *p = nil;
     XCTAssertNil(err);
 
     [p parse:@"select id from account where name = 'bob' AND msp__c excludes bob" error:&err];
-    assertStringsEq(err.localizedDescription, @"Unexpected input ' AND msp__c excludes bob' at position 42");
+    assertStringsEq(err.localizedDescription, @"Unexpected input 'AND msp__c excludes bob' at position 43");
 }
 
 -(void)testWhereInNotIn {
