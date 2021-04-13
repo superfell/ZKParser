@@ -109,6 +109,13 @@ SoqlParser *p = nil;
     XCTAssertNil(err);
 }
 
+-(void)testWhereOrderBy {
+    NSError *err = nil;
+    SelectQuery *res = [p parse:@"select id from contact where (name='bob')Order by createdDate desc" error:&err];
+    assertStringsEq(res.toSoql,@"SELECT id FROM contact WHERE name = 'bob' ORDER BY createdDate DESC");
+    XCTAssertNil(err);
+}
+
 -(void)testFilterScope {
     NSError *err = nil;
     SelectQuery *res = [p parse:@"select id from contact Using  Scope delegated" error:&err];

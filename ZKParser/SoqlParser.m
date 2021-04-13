@@ -279,7 +279,7 @@
         m.val = [OrderBy field:m.child[0].val asc:asc nulls:nulls loc:m.loc];
         return m;
     }];
-    ZKBaseParser *orderByFields = [f zeroOrOne:[[f seq:@[ws, [f eq:@"ORDER"], ws, [f eq:@"BY"], ws, [f oneOrMore:orderByField separator:commaSep]]] onMatch:^ParserResult*(ArrayParserResult*r) {
+    ZKBaseParser *orderByFields = [f zeroOrOne:[[f seq:@[maybeWs, [f eq:@"ORDER"], ws, [f eq:@"BY"], ws, [f oneOrMore:orderByField separator:commaSep]]] onMatch:^ParserResult*(ArrayParserResult*r) {
         
         // loc for OrderBys is just the ORDER BY keyword. TODO, we probably don't want that.
         r.val = [OrderBys by:[r.child[5].val valueForKey:@"val"] loc:NSUnionRange(r.child[1].loc, r.child[3].loc)];
