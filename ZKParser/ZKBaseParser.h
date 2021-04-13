@@ -47,6 +47,7 @@ ResultMapper setValue(NSObject *val);
 
 @interface ZKBaseParser : NSObject
 -(ParserResult *)parse:(ZKParserInput*)input error:(NSError **)err;
+-(void)setDebugName:(NSString *)n;
 @end
 
 // All parsers that return a single item should extend this.
@@ -73,6 +74,7 @@ typedef ParserResult *(^ParseBlock)(ZKParserInput*input,NSError **err);
 @interface ZKParserFactory : NSObject
 
 @property(assign,nonatomic) ZKCaseSensitivity defaultCaseSensitivity;
+@property(strong,nonatomic) NSString *debugFile;
 
 /// 1 or more whitespace characters
 -(ZKSingularParser*)whitespace;

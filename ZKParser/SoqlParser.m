@@ -133,6 +133,8 @@
 
 -(ZKBaseParser*)buildParser {
     ZKParserFactory *f = [ZKParserFactory new];
+    f.debugFile = @"/Users/simon/Github/ZKParser/typeof.debug";
+
     f.defaultCaseSensitivity = CaseInsensitive;
 
     // USING is not in the doc, but appears to not be allowed
