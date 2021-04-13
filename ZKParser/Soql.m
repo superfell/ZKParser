@@ -107,6 +107,35 @@ void append(NSMutableString *q, NSArray *a) {
 }
 @end
 
+@implementation TypeOfWhen
++(instancetype) sobject:(PositionedString*)sobject select:(NSArray<SelectField*>*)fields loc:(NSRange)loc {
+    TypeOfWhen *w = [TypeOfWhen new];
+    w.objectType = sobject;
+    w.select = fields;
+    w.loc = loc;
+    return w;
+}
+-(void)appendSoql:(NSMutableString*)dest {
+    [dest appendString:@"WHEN "];
+    [self.objectType appendSoql:dest];
+    [dest appendString:@" THEN "];
+    append(dest, self.select);
+}
+@end
+
+@implementation TypeOf
+-(void)appendSoql:(NSMutableString*)dest {
+    [dest appendString:@"TYPEOF "];
+    [self.field appendSoql:dest];
+    [dest appendString:@" "];
+    append_sep(dest, self.whens, @" ");
+    if (self.elses.count > 0) {
+        [dest appendString:@" ELSE "];
+        append(dest, self.elses);
+    }
+    [dest appendString:@" END"];
+}
+@end
 
 @implementation SObjectRef
 +(instancetype) name:(PositionedString *)n alias:(PositionedString *)a loc:(NSRange)loc {

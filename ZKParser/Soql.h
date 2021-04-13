@@ -41,6 +41,18 @@
 @property (strong,nonatomic) PositionedString *alias;
 @end
 
+@interface TypeOfWhen : AstNode
++(instancetype) sobject:(PositionedString*)sobject select:(NSArray<SelectField*>*)fields loc:(NSRange)loc;
+@property (strong, nonatomic) PositionedString *objectType;
+@property (strong, nonatomic) NSArray<SelectField*> *select;
+@end
+
+@interface TypeOf : Expr
+@property (strong,nonatomic) PositionedString *field;
+@property (strong,nonatomic) NSArray<TypeOfWhen*> *whens;
+@property (strong,nonatomic) NSArray<SelectField*> *elses;
+@end
+
 @interface SObjectRef : AstNode
 +(instancetype) name:(PositionedString *)n alias:(PositionedString *)a loc:(NSRange)loc;
 @property (strong,nonatomic) PositionedString *name;

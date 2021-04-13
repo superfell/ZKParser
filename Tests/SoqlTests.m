@@ -80,6 +80,14 @@ SoqlParser *p = nil;
     XCTAssertNil(err);
 }
 
+-(void)testTypeOf {
+    NSError *err = nil;
+    SelectQuery *res = [p parse:@"SELECT subject,TYPEOF what WHEN account Then id,BillingCity when opportunity then name,nextStep else id,name end from Task" error:&err];
+    assertStringsEq([res toSoql], @"SELECT subject,TYPEOF what WHEN account THEN id,BillingCity WHEN opportunity THEN name,nextStep ELSE id,name END FROM Task");
+    XCTAssertNil(err);
+}
+
+
 -(void)testWhitespace {
     NSError *err = nil;
     SelectQuery *res = [p parse:@"  \t select \t id from \n account \r\n where id\t=true\n" error:&err];
