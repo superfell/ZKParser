@@ -202,12 +202,12 @@
     ZKBaseParser *typeOfElse = [[f seq:@[[f eq:@"ELSE"], ws, [f oneOrMore:fieldOnly separator:commaSep]]] onMatch:pick(2)];
     ZKBaseParser *typeOf = [[f seq:@[
                                 [f eq:@"TYPEOF"], ws,
-                                fieldOnly, ws,
+                                ident, ws,
                                 [f oneOrMore:typeOfWhen separator:ws], maybeWs,
                                 [f zeroOrOne:typeOfElse], ws,
                                 [f eq:@"END"]]] onMatch:^ParserResult *(ArrayParserResult *r) {
         TypeOf *t = [TypeOf new];
-        t.field = r.child[2].val;
+        t.relationship = [r.child[2] posString];
         t.whens = [r.child[4].val valueForKey:@"val"];
         t.elses = [r.child[6].val valueForKey:@"val"];
         t.loc = r.loc;

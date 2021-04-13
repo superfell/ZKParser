@@ -126,7 +126,7 @@ void append(NSMutableString *q, NSArray *a) {
 @implementation TypeOf
 -(void)appendSoql:(NSMutableString*)dest {
     [dest appendString:@"TYPEOF "];
-    [self.field appendSoql:dest];
+    [self.relationship appendSoql:dest];
     [dest appendString:@" "];
     append_sep(dest, self.whens, @" ");
     if (self.elses.count > 0) {

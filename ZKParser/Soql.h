@@ -48,7 +48,7 @@
 @end
 
 @interface TypeOf : Expr
-@property (strong,nonatomic) PositionedString *field;
+@property (strong,nonatomic) PositionedString *relationship;
 @property (strong,nonatomic) NSArray<TypeOfWhen*> *whens;
 @property (strong,nonatomic) NSArray<SelectField*> *elses;
 @end
