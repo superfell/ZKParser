@@ -87,6 +87,20 @@ SoqlParser *p = nil;
     XCTAssertNil(err);
 }
 
+-(void)testDataCategory {
+    NSError *err = nil;
+    SelectQuery *res= [p parse:@"SELECT name from Account with data  category Geography__c above usa__c" error:&err];
+    assertStringsEq(res.toSoql, @"SELECT name FROM Account WITH DATA CATEGORY Geography__c ABOVE usa__c");
+    XCTAssertNil(err);
+
+    res= [p parse:@"SELECT name from Account with data  category Geography__c above (uk__c,usa__c) AND product Below phone__c" error:&err];
+    assertStringsEq(res.toSoql, @"SELECT name FROM Account WITH DATA CATEGORY Geography__c ABOVE (uk__c,usa__c) AND product BELOW phone__c");
+    XCTAssertNil(err);
+
+    res= [p parse:@"SELECT name from Account where name LIKE 'a%' with data  category Geography__c above (uk__c,usa__c) AND product Below phone__c order by name" error:&err];
+    assertStringsEq(res.toSoql, @"SELECT name FROM Account WHERE name LIKE 'a%' WITH DATA CATEGORY Geography__c ABOVE (uk__c,usa__c) AND product BELOW phone__c ORDER BY name ASC");
+    XCTAssertNil(err);
+}
 
 -(void)testWhitespace {
     NSError *err = nil;

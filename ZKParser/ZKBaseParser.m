@@ -644,7 +644,7 @@ ResultMapper setValue(NSObject *val) {
     // TODO, there's lots more scope to make this more efficient
     NSMutableArray<ZKBaseParser*> *parsers = [NSMutableArray arrayWithCapacity:list.count];
     for (NSString *s in list) {
-        [parsers addObject:[self eq:s]];
+        [parsers addObject:[[self eq:s] onMatch:setValue(s)]];
     }
     return [self wrapDebug:[self firstOf:parsers]];
 }

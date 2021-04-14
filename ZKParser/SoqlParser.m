@@ -134,9 +134,27 @@
 -(ZKBaseParser*)buildParser {
     ZKParserFactory *f = [ZKParserFactory new];
     f.debugFile = @"/Users/simon/Github/ZKParser/typeof.debug";
-
     f.defaultCaseSensitivity = CaseInsensitive;
 
+    ZKBaseParser* ws = [f characters:[NSCharacterSet whitespaceAndNewlineCharacterSet] name:@"whitespace" min:1];
+    ZKBaseParser* maybeWs = [f characters:[NSCharacterSet whitespaceAndNewlineCharacterSet] name:@"whitespace" min:0];
+
+    // constructs a seq parser for each whitespace separated token, e.g. given input "NULLS LAST" will generate
+    // seq:"NULLS", ws, "LAST".
+    ZKBaseParser*(^tokenSeq)(NSString *tokens) = ^ZKBaseParser*(NSString *t) {
+        NSArray<NSString*>* tokens = [t componentsSeparatedByCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
+        NSMutableArray *seq = [NSMutableArray arrayWithCapacity:tokens.count *2];
+        NSEnumerator *e = [tokens objectEnumerator];
+        [seq addObject:[f eq:[e nextObject]]];
+        do {
+            NSString *next = [e nextObject];
+            if (next == nil) break;
+            [seq addObject:ws];
+            [seq addObject:[f eq:next]];
+        } while(true);
+        return [[f seq:seq] onMatch:setValue(t)];
+    };
+    
     // USING is not in the doc, but appears to not be allowed
     // ORDER & OFFSET are issues for our parser, but not the sfdc one.
     NSSet<NSString*>* keywords = [NSSet setWithArray:[@"ORDER OFFSET USING   AND ASC DESC EXCLUDES FIRST FROM GROUP HAVING IN INCLUDES LAST LIKE LIMIT NOT NULL NULLS OR SELECT WHERE WITH" componentsSeparatedByCharactersInSet:[NSCharacterSet whitespaceCharacterSet]]];
@@ -144,8 +162,6 @@
         NSString *s = (NSString *)v;
         return [keywords containsObject:[s uppercaseString]];
     };
-    ZKBaseParser* ws = [f characters:[NSCharacterSet whitespaceAndNewlineCharacterSet] name:@"whitespace" min:1];
-    ZKBaseParser* maybeWs = [f characters:[NSCharacterSet whitespaceAndNewlineCharacterSet] name:@"whitespace" min:0];
     ZKBaseParser* commaSep = [f seq:@[maybeWs, [f eq:@","], maybeWs]];
     ZKBaseParser* ident = [f characters:[NSCharacterSet characterSetWithCharactersInString:@"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_"]
                                name:@"identifier"
@@ -248,7 +264,7 @@
     /// WHERE
     ZKBaseParser *operator = [f oneOfTokens:@"< <= > >= = != LIKE"];
     ZKBaseParser *opIncExcl = [f oneOfTokens:@"INCLUDES EXCLUDES"];
-    ZKBaseParser *opInNotIn = [f oneOf:@[[f eq:@"IN"], [[f seq:@[[f eq:@"NOT"], ws, [f eq:@"IN"]]] onMatch:setValue(@"NOT IN")]]];
+    ZKBaseParser *opInNotIn = [f oneOf:@[[f eq:@"IN"], tokenSeq(@"NOT IN")]];
     ZKBaseParser *literalValue = [self literalValue:f];
     ZKBaseParser *literalStringList = [[f seq:@[    [f eq:@"("], maybeWs,
                                                 [f oneOrMore:[self literalStringValue:f] separator:commaSep],
@@ -294,6 +310,23 @@
     /// FILTER SCOPE
     ZKBaseParser *filterScope = [f zeroOrOne:[[f seq:@[ws, [f eq:@"USING"], ws, [f eq:@"SCOPE"], ws, ident]] onMatch:pick(5)]];
 
+    /// DATA CATEGORY
+    ZKBaseParser *catList = [[f seq:@[[f eq:@"("], maybeWs, [f oneOrMore:ident separator:commaSep], maybeWs, [f eq:@")"]]] onMatch:pick(2)];
+    ZKBaseParser *catFilterVal = [[f firstOf:@[catList, ident]] onMatch:^ParserResult *(ParserResult *r) {
+        if ([r.val isKindOfClass:[NSArray class]]) {
+            r.val = [r.val valueForKey:@"posString"];
+        } else {
+            r.val = [NSArray arrayWithObject:[r posString]];
+        }
+        return r;
+    }];
+    ZKBaseParser *catFilter = [[f seq:@[ident, ws, [f oneOfTokens:@"AT ABOVE BELOW ABOVE_OR_BELOW"], maybeWs, catFilterVal]] onMatch:^ParserResult*(ArrayParserResult*r) {
+        r.val = [DataCategoryFilter filter:r.child[0].posString op:r.child[2].posString values:r.child[4].val loc:r.loc];
+        return r;
+    }];
+    ZKBaseParser *withDataCat = [f zeroOrOne:[[f seq:@[ws, tokenSeq(@"WITH DATA CATEGORY"), ws,
+                                                       [f oneOrMore:catFilter separator:[f seq:@[ws,[f eq:@"AND"],ws]]]]] onMatch:pick(3)]];
+    
     
     /// ORDER BY
     ZKBaseParser *asc  = [[f eq:@"ASC"] onMatch:setValue(@YES)];
@@ -322,13 +355,14 @@
     }]];
 
     /// SELECT
-    selectStmt.parser = [[f seq:@[maybeWs, [f eq:@"SELECT"], ws, selectExprs, ws, [f eq:@"FROM"], ws, objectRefs, filterScope, where, orderByFields, maybeWs]] onMatch:^ParserResult*(ArrayParserResult*m) {
+    selectStmt.parser = [[f seq:@[maybeWs, [f eq:@"SELECT"], ws, selectExprs, ws, [f eq:@"FROM"], ws, objectRefs, filterScope, where, withDataCat, orderByFields, maybeWs]] onMatch:^ParserResult*(ArrayParserResult*m) {
         SelectQuery *q = [SelectQuery new];
         q.selectExprs = m.child[3].val;
         q.from = m.child[7].val;
         q.filterScope = [m childIsNull:8] ? nil : [m.child[8] posString];
         q.where = [m childIsNull:9] ? nil : m.child[9].val;
-        q.orderBy = [m childIsNull:10] ? [OrderBys new] : m.child[10].val;
+        q.withDataCategory = [m childIsNull:10] ? nil : [m.child[10].val valueForKey:@"val"];
+        q.orderBy = [m childIsNull:11] ? [OrderBys new] : m.child[11].val;
         m.val = q;
         q.loc = m.loc;
         return m;

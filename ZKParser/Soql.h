@@ -105,6 +105,13 @@ typedef NS_ENUM(uint16_t, LiteralType) {
 @property (strong,nonatomic) Expr *expr;
 @end
 
+@interface DataCategoryFilter : Expr
++(instancetype)filter:(PositionedString*)category op:(PositionedString*)op values:(NSArray<PositionedString*>*)vals loc:(NSRange)loc;
+@property (strong, nonatomic) PositionedString *category;
+@property (strong, nonatomic) PositionedString *op;
+@property (strong, nonatomic) NSArray<PositionedString*>* values;
+@end
+
 static const NSInteger NullsDefault = 1;
 static const NSInteger NullsFirst = 2;
 static const NSInteger NullsLast = 3;
@@ -126,6 +133,7 @@ static const NSInteger NullsLast = 3;
 @property (strong,nonatomic) From *from;
 @property (strong,nonatomic) PositionedString *filterScope;
 @property (strong,nonatomic) Expr *where;
+@property (strong,nonatomic) NSArray<PositionedString*> *withDataCategory;
 @property (strong,nonatomic) OrderBys *orderBy;
 @property (assign,nonatomic) NSInteger limit;
 @property (assign,nonatomic) NSInteger offset;

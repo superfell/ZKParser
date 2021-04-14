@@ -292,6 +292,31 @@ NSISO8601DateFormatter *dateTimeFormatter = nil;
 
 @end
 
+@implementation DataCategoryFilter
++(instancetype)filter:(PositionedString*)category op:(PositionedString*)op values:(NSArray<PositionedString*>*)vals loc:(NSRange)loc {
+    DataCategoryFilter *f = [self new];
+    f.category = category;
+    f.op = op;
+    f.values = vals;
+    f.loc = loc;
+    return f;
+}
+-(void)appendSoql:(NSMutableString *)dest {
+    [self.category appendSoql:dest];
+    [dest appendString:@" "];
+    [self.op appendSoql:dest];
+    [dest appendString:@" "];
+    if (self.values.count > 1) {
+        [dest appendString:@"("];
+        append(dest, self.values);
+        [dest appendString:@")"];
+    } else {
+        [self.values[0] appendSoql:dest];
+    }
+}
+
+@end
+
 @implementation OrderBys
 +(instancetype) by:(NSArray<OrderBy*>*)items loc:(NSRange)loc {
     OrderBys *r = [OrderBys new];
@@ -347,6 +372,10 @@ NSISO8601DateFormatter *dateTimeFormatter = nil;
     if (self.where != nil) {
         [dest appendString:@" WHERE "];
         [self.where appendSoql:dest];
+    }
+    if (self.withDataCategory.count > 0) {
+        [dest appendString:@" WITH DATA CATEGORY "];
+        append_sep(dest, self.withDataCategory, @" AND ");
     }
     [self.orderBy appendSoql:dest];
     if (self.limit < NSIntegerMax) {
