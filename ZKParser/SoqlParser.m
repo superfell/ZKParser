@@ -334,14 +334,15 @@
     }];
     ZKBaseParser *groupByFieldList = [[f seq:@[[f eq:@"("], maybeWs, [f oneOrMore:fieldOrFunc separator:commaSep], maybeWs, [f eq:@")"]]] onMatch:pick(2)];
     ZKBaseParser *groupByRollup = [[f seq:@[ws, tokenSeq(@"GROUP BY ROLLUP"),maybeWs, groupByFieldList]] onMatch:^ParserResult *(ArrayParserResult *r) {
-        r.val = [GroupBy type:TGroupByRollup fields:r.child[3].val loc:r.loc];
+        r.val = [GroupBy type:TGroupByRollup fields:[r.child[3].val valueForKey:@"val"] loc:r.loc];
         return r;
     }];
     ZKBaseParser *groupByCube = [[f seq:@[ws, tokenSeq(@"GROUP BY CUBE"), maybeWs, groupByFieldList]] onMatch:^ParserResult *(ArrayParserResult *r) {
-        r.val = [GroupBy type:TGroupByCube fields:r.child[3].val loc:r.loc];
+        r.val = [GroupBy type:TGroupByCube fields:[r.child[3].val valueForKey:@"val"] loc:r.loc];
         return r;
     }];
-    ZKBaseParser *groupByClause = [f zeroOrOne:[f firstOf:@[groupByRollup, groupByCube, groupBy]]];
+    ZKBaseParser *having = [f zeroOrOne:[[f seq:@[ws ,[f eq:@"HAVING"], ws, exprList]] onMatch:pick(3)]];
+    ZKBaseParser *groupByClause = [f zeroOrOne:[f seq:@[[f firstOf:@[groupByRollup, groupByCube, groupBy]], having]]];
     
     /// ORDER BY
     ZKBaseParser *asc  = [[f eq:@"ASC"] onMatch:setValue(@YES)];
@@ -378,7 +379,11 @@
         q.filterScope = [m childIsNull:8] ? nil : [m.child[8] posString];
         q.where = [m childIsNull:9] ? nil : m.child[9].val;
         q.withDataCategory = [m childIsNull:10] ? nil : [m.child[10].val valueForKey:@"val"];
-        q.groupBy = [m childIsNull:11] ? nil : m.child[11].val;
+        if (![m childIsNull:11]) {
+            ArrayParserResult *o = (ArrayParserResult*)m.child[11];
+            q.groupBy = o.child[0].val;
+            q.having = [o childIsNull:1] ? nil : o.child[1].val;
+        }
         q.orderBy = [m childIsNull:12] ? [OrderBys new] : m.child[12].val;
         m.val = q;
         q.loc = m.loc;

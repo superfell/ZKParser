@@ -319,6 +319,26 @@ SoqlParser *p = nil;
     res = [p parse:@"SELECT calendar_year(createdDate) yr, count(id) cnt  from case group by calendar_year(createdDate), createdBy.alias" error:&err];
     assertStringsEq(res.toSoql, @"SELECT calendar_year(createdDate) yr,count(id) cnt FROM case GROUP BY calendar_year(createdDate),createdBy.alias");
     XCTAssertNil(err);
+    
+    res =[p parse:@"SELECT account.name,count(id) from case group by rollup(account.name)" error:&err];
+    assertStringsEq(res.toSoql, @"SELECT account.name,count(id) FROM case GROUP BY ROLLUP(account.name)");
+    XCTAssertNil(err);
+
+    res =[p parse:@"SELECT account.name,count(id) from case group by cube(account.name)" error:&err];
+    assertStringsEq(res.toSoql, @"SELECT account.name,count(id) FROM case GROUP BY CUBE(account.name)");
+    XCTAssertNil(err);
+
+    res =[p parse:@"SELECT account.name,count(id) from case  group  by  cube ( account.name )" error:&err];
+    assertStringsEq(res.toSoql, @"SELECT account.name,count(id) FROM case GROUP BY CUBE(account.name)");
+    XCTAssertNil(err);
+
+    res =[p parse:@"SELECT account.name,count(id) from case  group  by account.name having count(id)>5" error:&err];
+    assertStringsEq(res.toSoql, @"SELECT account.name,count(id) FROM case GROUP BY account.name HAVING count(id) > 5");
+    XCTAssertNil(err);
+
+    res =[p parse:@"SELECT account.name,count(id) from case  group  by account.name having count(id)>5 AND (foo>1 OR foo<-5)" error:&err];
+    assertStringsEq(res.toSoql, @"SELECT account.name,count(id) FROM case GROUP BY account.name HAVING (count(id) > 5 AND (foo > 1 OR foo < -5))");
+    XCTAssertNil(err);
 }
 
 -(void)testOrderBy {

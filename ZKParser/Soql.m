@@ -337,7 +337,7 @@ NSISO8601DateFormatter *dateTimeFormatter = nil;
         default: NSAssert(FALSE, @"Unexpected groupingType of %d", self.type);
     }
     append(dest, self.fields);
-    if (self.type == TGroupByCube || self.type == TGroupByCube) {
+    if (self.type == TGroupByCube || self.type == TGroupByRollup) {
         [dest appendString:@")"];
     }
 }
@@ -405,6 +405,10 @@ NSISO8601DateFormatter *dateTimeFormatter = nil;
         append_sep(dest, self.withDataCategory, @" AND ");
     }
     [self.groupBy appendSoql:dest];
+    if (self.having != nil) {
+        [dest appendString:@" HAVING "];
+        [self.having appendSoql:dest];
+    }
     [self.orderBy appendSoql:dest];
     if (self.limit < NSIntegerMax) {
         [dest appendFormat:@" LIMIT %lu", self.limit];
@@ -422,6 +426,9 @@ NSISO8601DateFormatter *dateTimeFormatter = nil;
     q.from = s.from;
     q.filterScope = s.filterScope;
     q.where = s.where;
+    q.withDataCategory = s.withDataCategory;
+    q.groupBy = s.groupBy;
+    q.having = s.having;
     q.orderBy = s.orderBy;
     q.offset = s.offset;
     q.limit = s.limit;

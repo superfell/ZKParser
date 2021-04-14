@@ -148,6 +148,7 @@ static const NSInteger NullsLast = 3;
 @property (strong,nonatomic) NSArray<PositionedString*> *withDataCategory;
 @property (strong,nonatomic) GroupBy *groupBy;
 @property (strong,nonatomic) OrderBys *orderBy;
+@property (strong,nonatomic) Expr *having;
 @property (assign,nonatomic) NSInteger limit;
 @property (assign,nonatomic) NSInteger offset;
 @end
