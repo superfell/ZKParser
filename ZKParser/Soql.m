@@ -36,16 +36,25 @@ void append(NSMutableString *q, NSArray *a) {
 
 @end
 
-@implementation PositionedString
-+(instancetype)string:(NSString *)s loc:(NSRange)loc {
-    PositionedString *r = [PositionedString new];
-    r.val = s;
+@implementation PositionedValue
++(instancetype)value:(id)v loc:(NSRange)loc {
+    PositionedValue *r = [self new];
+    r.val = v;
     r.loc = loc;
     return r;
 }
 +(instancetype)from:(ParserResult*)r {
-    assert([r.val isKindOfClass:[NSString class]]);
-    return [self string:(NSString*)r.val loc:r.loc];
+    return [self value:r.val loc:r.loc];
+}
+@end
+
+@implementation PositionedString
++(instancetype)string:(NSString *)s loc:(NSRange)loc {
+    assert([s isKindOfClass:[NSString class]]);
+    PositionedString *r = [self new];
+    r.val = s;
+    r.loc = loc;
+    return r;
 }
 +(NSArray<PositionedString*>*)fromArray:(NSArray<ParserResult*>*)r {
     NSMutableArray<PositionedString*> *out = [NSMutableArray arrayWithCapacity:r.count];
@@ -405,10 +414,10 @@ NSISO8601DateFormatter *dateTimeFormatter = nil;
     }
     [self.orderBy appendSoql:dest];
     if (self.limit != nil) {
-        [dest appendFormat:@" LIMIT %@", self.limit];
+        [dest appendFormat:@" LIMIT %@", self.limit.val];
     }
     if (self.offset != nil) {
-        [dest appendFormat:@" OFFSET %@", self.offset];
+        [dest appendFormat:@" OFFSET %@", self.offset.val];
     }
     if (self.forViewReference != nil) {
         [dest appendFormat:@" FOR %@", self.forViewReference.val];

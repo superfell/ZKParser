@@ -370,8 +370,14 @@
         return r;
     }]];
 
-    ZKBaseParser *limit = [f zeroOrOne:[[f seq:@[maybeWs, [f eq:@"LIMIT"], maybeWs, [f integerNumber]]] onMatch:pick(3)]];
-    ZKBaseParser *offset= [f zeroOrOne:[[f seq:@[maybeWs, [f eq:@"OFFSET"], maybeWs, [f integerNumber]]] onMatch:pick(3)]];
+    ZKBaseParser *limit = [f zeroOrOne:[[f seq:@[maybeWs, [f eq:@"LIMIT"], maybeWs, [f integerNumber]]] onMatch:^ParserResult*(ArrayParserResult*r) {
+        r.val = [PositionedValue<NSNumber*> value:r.child[3].val loc:r.child[3].loc];
+        return r;
+    }]];
+    ZKBaseParser *offset= [f zeroOrOne:[[f seq:@[maybeWs, [f eq:@"OFFSET"], maybeWs, [f integerNumber]]] onMatch:^ParserResult*(ArrayParserResult*r) {
+        r.val = [PositionedValue<NSNumber*> value:r.child[3].val loc:r.child[3].loc];
+        return r;
+    }]];
     ZKBaseParser *forView = [f zeroOrOne:[[f seq:@[maybeWs, [f eq:@"FOR"], ws, [f oneOfTokens:@"VIEW REFERENCE"]]] onMatch:pick(3)]];
     ZKBaseParser *updateTracking = [f zeroOrOne:[[f seq:@[maybeWs, [f eq:@"UPDATE"], ws, [f oneOfTokens:@"TRACKING VIEWSTAT"]]] onMatch:pick(3)]];
 

@@ -16,12 +16,16 @@
 -(void)appendSoql:(NSMutableString*)dest;
 @end
 
-@interface PositionedString : AstNode
-+(instancetype)string:(NSString *)s loc:(NSRange)loc;
+@interface PositionedValue<T> : AstNode
++(instancetype)value:(T)v loc:(NSRange)loc;
 +(instancetype)from:(ParserResult*)r;
+@property (strong,nonatomic) T val;
+@end
+
+@interface PositionedString : PositionedValue<NSString*>
++(instancetype)string:(NSString *)s loc:(NSRange)loc;
 +(NSArray<PositionedString*>*)fromArray:(NSArray<ParserResult*>*)r;
 
-@property (strong,nonatomic) NSString *val;
 @property (readonly) NSInteger length;
 @end
 
@@ -149,8 +153,8 @@ static const NSInteger NullsLast = 3;
 @property (strong,nonatomic) GroupBy *groupBy;
 @property (strong,nonatomic) OrderBys *orderBy;
 @property (strong,nonatomic) Expr *having;
-@property (assign,nonatomic) NSNumber *limit;
-@property (assign,nonatomic) NSNumber *offset;
+@property (assign,nonatomic) PositionedValue<NSNumber*> *limit;
+@property (assign,nonatomic) PositionedValue<NSNumber*> *offset;
 @property (assign,nonatomic) PositionedString *forViewReference;
 @property (assign,nonatomic) PositionedString *updateTracking;
 @end
