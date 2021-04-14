@@ -372,9 +372,12 @@
 
     ZKBaseParser *limit = [f zeroOrOne:[[f seq:@[maybeWs, [f eq:@"LIMIT"], maybeWs, [f integerNumber]]] onMatch:pick(3)]];
     ZKBaseParser *offset= [f zeroOrOne:[[f seq:@[maybeWs, [f eq:@"OFFSET"], maybeWs, [f integerNumber]]] onMatch:pick(3)]];
+    ZKBaseParser *forView = [f zeroOrOne:[[f seq:@[maybeWs, [f eq:@"FOR"], ws, [f oneOfTokens:@"VIEW REFERENCE"]]] onMatch:pick(3)]];
+    ZKBaseParser *updateTracking = [f zeroOrOne:[[f seq:@[maybeWs, [f eq:@"UPDATE"], ws, [f oneOfTokens:@"TRACKING VIEWSTAT"]]] onMatch:pick(3)]];
+
     /// SELECT
     selectStmt.parser = [[f seq:@[maybeWs, [f eq:@"SELECT"], ws, selectExprs, ws, [f eq:@"FROM"], ws, objectRefs,
-                                  filterScope, where, withDataCat, groupByClause, orderByFields, limit, offset, maybeWs]] onMatch:^ParserResult*(ArrayParserResult*m) {
+                                  filterScope, where, withDataCat, groupByClause, orderByFields, limit, offset, forView, updateTracking, maybeWs]] onMatch:^ParserResult*(ArrayParserResult*m) {
         SelectQuery *q = [SelectQuery new];
         q.selectExprs = m.child[3].val;
         q.from = m.child[7].val;
@@ -389,6 +392,8 @@
         q.orderBy = [m childIsNull:12] ? [OrderBys new] : m.child[12].val;
         q.limit = [m childIsNull:13] ? nil : m.child[13].val;
         q.offset = [m childIsNull:14] ? nil : m.child[14].val;
+        q.forViewReference = [m childIsNull:15] ? nil : [m.child[15] posString];
+        q.updateTracking = [m childIsNull:16] ? nil : [m.child[16] posString];
         q.loc = m.loc;
         m.val = q;
         return m;

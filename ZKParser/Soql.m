@@ -410,6 +410,12 @@ NSISO8601DateFormatter *dateTimeFormatter = nil;
     if (self.offset != nil) {
         [dest appendFormat:@" OFFSET %@", self.offset];
     }
+    if (self.forViewReference != nil) {
+        [dest appendFormat:@" FOR %@", self.forViewReference.val];
+    }
+    if (self.updateTracking != nil) {
+        [dest appendFormat:@" UPDATE %@", self.updateTracking.val];
+    }
 }
 @end
 
@@ -426,6 +432,8 @@ NSISO8601DateFormatter *dateTimeFormatter = nil;
     q.orderBy = s.orderBy;
     q.offset = s.offset;
     q.limit = s.limit;
+    q.forViewReference = s.forViewReference;
+    q.updateTracking = s.updateTracking;
     q.loc = s.loc;
     return q;
 }

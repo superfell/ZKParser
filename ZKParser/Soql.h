@@ -151,6 +151,8 @@ static const NSInteger NullsLast = 3;
 @property (strong,nonatomic) Expr *having;
 @property (assign,nonatomic) NSNumber *limit;
 @property (assign,nonatomic) NSNumber *offset;
+@property (assign,nonatomic) PositionedString *forViewReference;
+@property (assign,nonatomic) PositionedString *updateTracking;
 @end
 
 @interface NestedSelectQuery : SelectQuery

@@ -388,7 +388,32 @@ SoqlParser *p = nil;
     assertStringsEq(res.toSoql,@"SELECT name FROM contact WHERE name > 'a' OFFSET 5");
     XCTAssertNil(err);
     
+    // TODO implement Cut() to prevent back tracking and improve error messages
     [p parse:@"select name from contact where name>'a'offset a" error:&err];
-    assertStringsEq(err.localizedDescription, @"expecting integer number at position 12");
+    assertStringsEq(err.localizedDescription, @"Unexpected input 'offset a' at position 40");
 }
+
+-(void)testForView {
+    NSError *err = nil;
+    SelectQuery *res = [p parse:@"SELECT name FROM contact LIMIT 1 for view" error:&err];
+    assertStringsEq(res.toSoql, @"SELECT name FROM contact LIMIT 1 FOR VIEW");
+    XCTAssertNil(err);
+    
+    res = [p parse:@"SELECT name FROM contact LIMIT 1 for   reference" error:&err];
+    assertStringsEq(res.toSoql, @"SELECT name FROM contact LIMIT 1 FOR REFERENCE");
+    XCTAssertNil(err);
+
+    res = [p parse:@"SELECT name FROM contact LIMIT 1 update tracking" error:&err];
+    assertStringsEq(res.toSoql, @"SELECT name FROM contact LIMIT 1 UPDATE TRACKING");
+    XCTAssertNil(err);
+
+    res = [p parse:@"SELECT name FROM contact LIMIT 1 update viewstat" error:&err];
+    assertStringsEq(res.toSoql, @"SELECT name FROM contact LIMIT 1 UPDATE VIEWSTAT");
+    XCTAssertNil(err);
+
+    res = [p parse:@"SELECT name FROM contact LIMIT 1 for reference update viewstat" error:&err];
+    assertStringsEq(res.toSoql, @"SELECT name FROM contact LIMIT 1 FOR REFERENCE UPDATE VIEWSTAT");
+    XCTAssertNil(err);
+}
+
 @end
