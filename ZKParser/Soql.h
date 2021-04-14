@@ -112,13 +112,25 @@ typedef NS_ENUM(uint16_t, LiteralType) {
 @property (strong, nonatomic) NSArray<PositionedString*>* values;
 @end
 
+typedef NS_ENUM(uint16_t, GroupingType) {
+    TGroupBy,
+    TGroupByRollup,
+    TGroupByCube
+};
+
+@interface GroupBy : AstNode
++(instancetype)type:(GroupingType)t fields:(NSArray<Expr*>*)fields loc:(NSRange)loc;
+@property (assign,nonatomic) GroupingType type;
+@property (strong,nonatomic) NSArray<Expr*>* fields;    // fields or func
+@end
+
 static const NSInteger NullsDefault = 1;
 static const NSInteger NullsFirst = 2;
 static const NSInteger NullsLast = 3;
 
 @interface OrderBy : AstNode
-+(instancetype) field:(SelectField*)f asc:(BOOL)asc nulls:(NSInteger)n loc:(NSRange)loc;
-@property (strong, nonatomic) SelectField* field;
++(instancetype) field:(Expr*)f asc:(BOOL)asc nulls:(NSInteger)n loc:(NSRange)loc;
+@property (strong, nonatomic) Expr* field;  // field or func
 @property (assign, nonatomic) BOOL asc;
 @property (assign, nonatomic) NSInteger nulls;
 @end
@@ -134,6 +146,7 @@ static const NSInteger NullsLast = 3;
 @property (strong,nonatomic) PositionedString *filterScope;
 @property (strong,nonatomic) Expr *where;
 @property (strong,nonatomic) NSArray<PositionedString*> *withDataCategory;
+@property (strong,nonatomic) GroupBy *groupBy;
 @property (strong,nonatomic) OrderBys *orderBy;
 @property (assign,nonatomic) NSInteger limit;
 @property (assign,nonatomic) NSInteger offset;

@@ -87,21 +87,6 @@ SoqlParser *p = nil;
     XCTAssertNil(err);
 }
 
--(void)testDataCategory {
-    NSError *err = nil;
-    SelectQuery *res= [p parse:@"SELECT name from Account with data  category Geography__c above usa__c" error:&err];
-    assertStringsEq(res.toSoql, @"SELECT name FROM Account WITH DATA CATEGORY Geography__c ABOVE usa__c");
-    XCTAssertNil(err);
-
-    res= [p parse:@"SELECT name from Account with data  category Geography__c above (uk__c,usa__c) AND product Below phone__c" error:&err];
-    assertStringsEq(res.toSoql, @"SELECT name FROM Account WITH DATA CATEGORY Geography__c ABOVE (uk__c,usa__c) AND product BELOW phone__c");
-    XCTAssertNil(err);
-
-    res= [p parse:@"SELECT name from Account where name LIKE 'a%' with data  category Geography__c above (uk__c,usa__c) AND product Below phone__c order by name" error:&err];
-    assertStringsEq(res.toSoql, @"SELECT name FROM Account WHERE name LIKE 'a%' WITH DATA CATEGORY Geography__c ABOVE (uk__c,usa__c) AND product BELOW phone__c ORDER BY name ASC");
-    XCTAssertNil(err);
-}
-
 -(void)testWhitespace {
     NSError *err = nil;
     SelectQuery *res = [p parse:@"  \t select \t id from \n account \r\n where id\t=true\n" error:&err];
@@ -120,28 +105,25 @@ SoqlParser *p = nil;
     XCTAssertNil(err);
 }
 
--(void)testOrderBy {
-    NSError *err = nil;
-    SelectQuery *res = [p parse:@"select id from contact order by name desc, city asc nulls last" error:&err];
-    XCTAssertEqualObjects([res toSoql], @"SELECT id FROM contact ORDER BY name DESC,city ASC NULLS LAST");
-    XCTAssertNil(err);
-    
-    res = [p parse:@"select id from contact order by name desc, city nulls first" error:&err];
-    XCTAssertEqualObjects([res toSoql], @"SELECT id FROM contact ORDER BY name DESC,city ASC NULLS FIRST");
-    XCTAssertNil(err);
-}
-
--(void)testWhereOrderBy {
-    NSError *err = nil;
-    SelectQuery *res = [p parse:@"select id from contact where (name='bob')Order by createdDate desc" error:&err];
-    assertStringsEq(res.toSoql,@"SELECT id FROM contact WHERE name = 'bob' ORDER BY createdDate DESC");
-    XCTAssertNil(err);
-}
-
 -(void)testFilterScope {
     NSError *err = nil;
     SelectQuery *res = [p parse:@"select id from contact Using  Scope delegated" error:&err];
     XCTAssertEqualObjects([res toSoql], @"SELECT id FROM contact USING SCOPE delegated");
+    XCTAssertNil(err);
+}
+
+-(void)testDataCategory {
+    NSError *err = nil;
+    SelectQuery *res= [p parse:@"SELECT name from Account with data  category Geography__c above usa__c" error:&err];
+    assertStringsEq(res.toSoql, @"SELECT name FROM Account WITH DATA CATEGORY Geography__c ABOVE usa__c");
+    XCTAssertNil(err);
+
+    res= [p parse:@"SELECT name from Account with data  category Geography__c above (uk__c,usa__c) AND product Below phone__c" error:&err];
+    assertStringsEq(res.toSoql, @"SELECT name FROM Account WITH DATA CATEGORY Geography__c ABOVE (uk__c,usa__c) AND product BELOW phone__c");
+    XCTAssertNil(err);
+
+    res= [p parse:@"SELECT name from Account where name LIKE 'a%' with data  category Geography__c above (uk__c,usa__c) AND product Below phone__c order by name" error:&err];
+    assertStringsEq(res.toSoql, @"SELECT name FROM Account WHERE name LIKE 'a%' WITH DATA CATEGORY Geography__c ABOVE (uk__c,usa__c) AND product BELOW phone__c ORDER BY name ASC");
     XCTAssertNil(err);
 }
 
@@ -323,4 +305,49 @@ SoqlParser *p = nil;
     assertStringsEq([res toSoql], @"SELECT HOUR_IN_DAY(convertTimezone(CreatedDate)) hour,SUM(Amount) amt FROM Opportunity");
     XCTAssertNil(err);
 }
+
+-(void)testGroupBy {
+    NSError *err = nil;
+    SelectQuery *res =[p parse:@"SELECT account.name,count(id) from case group by account.name" error:&err];
+    assertStringsEq(res.toSoql, @"SELECT account.name,count(id) FROM case GROUP BY account.name");
+    XCTAssertNil(err);
+
+    res = [p parse:@"SELECT calendar_year(createdDate) yr, count(id) cnt  from case group by calendar_year(createdDate)" error:&err];
+    assertStringsEq(res.toSoql, @"SELECT calendar_year(createdDate) yr,count(id) cnt FROM case GROUP BY calendar_year(createdDate)");
+    XCTAssertNil(err);
+
+    res = [p parse:@"SELECT calendar_year(createdDate) yr, count(id) cnt  from case group by calendar_year(createdDate), createdBy.alias" error:&err];
+    assertStringsEq(res.toSoql, @"SELECT calendar_year(createdDate) yr,count(id) cnt FROM case GROUP BY calendar_year(createdDate),createdBy.alias");
+    XCTAssertNil(err);
+}
+
+-(void)testOrderBy {
+    NSError *err = nil;
+    SelectQuery *res = [p parse:@"select id from contact order by name desc, city asc nulls last" error:&err];
+    assertStringsEq([res toSoql], @"SELECT id FROM contact ORDER BY name DESC,city ASC NULLS LAST");
+    XCTAssertNil(err);
+    
+    res = [p parse:@"select id from contact order by name desc, city nulls first" error:&err];
+    assertStringsEq([res toSoql], @"SELECT id FROM contact ORDER BY name DESC,city ASC NULLS FIRST");
+    XCTAssertNil(err);
+
+    res = [p parse:@"SELECT id FROM contact ORDER BY name DESC,calendar_year(createdDate) ASC NULLS FIRST" error:&err];
+    assertStringsEq([res toSoql], @"SELECT id FROM contact ORDER BY name DESC,calendar_year(createdDate) ASC NULLS FIRST");
+    XCTAssertNil(err);
+}
+
+-(void)testGroupByOrderBy {
+    NSError *err = nil;
+    SelectQuery *res = [p parse:@"SELECT calendar_year(createdDate) yr,count(id) cnt FROM case GROUP BY calendar_year(createdDate),createdBy.alias ORDER BY calendar_year(createdDate)" error:&err];
+    assertStringsEq(res.toSoql,@"SELECT calendar_year(createdDate) yr,count(id) cnt FROM case GROUP BY calendar_year(createdDate),createdBy.alias ORDER BY calendar_year(createdDate) ASC");
+    XCTAssertNil(err);
+}
+
+-(void)testWhereOrderBy {
+    NSError *err = nil;
+    SelectQuery *res = [p parse:@"select id from contact where (name='bob')Order by createdDate desc" error:&err];
+    assertStringsEq(res.toSoql,@"SELECT id FROM contact WHERE name = 'bob' ORDER BY createdDate DESC");
+    XCTAssertNil(err);
+}
+
 @end

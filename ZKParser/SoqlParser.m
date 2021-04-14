@@ -327,6 +327,21 @@
     ZKBaseParser *withDataCat = [f zeroOrOne:[[f seq:@[ws, tokenSeq(@"WITH DATA CATEGORY"), ws,
                                                        [f oneOrMore:catFilter separator:[f seq:@[ws,[f eq:@"AND"],ws]]]]] onMatch:pick(3)]];
     
+    /// GROUP BY
+    ZKBaseParser *groupBy = [[f seq:@[ws, tokenSeq(@"GROUP BY"), ws, [f oneOrMore:fieldOrFunc separator:commaSep]]] onMatch:^ParserResult *(ArrayParserResult *r) {
+        r.val = [GroupBy type:TGroupBy fields:[r.child[3].val valueForKey:@"val"] loc:r.loc];
+        return r;
+    }];
+    ZKBaseParser *groupByFieldList = [[f seq:@[[f eq:@"("], maybeWs, [f oneOrMore:fieldOrFunc separator:commaSep], maybeWs, [f eq:@")"]]] onMatch:pick(2)];
+    ZKBaseParser *groupByRollup = [[f seq:@[ws, tokenSeq(@"GROUP BY ROLLUP"),maybeWs, groupByFieldList]] onMatch:^ParserResult *(ArrayParserResult *r) {
+        r.val = [GroupBy type:TGroupByRollup fields:r.child[3].val loc:r.loc];
+        return r;
+    }];
+    ZKBaseParser *groupByCube = [[f seq:@[ws, tokenSeq(@"GROUP BY CUBE"), maybeWs, groupByFieldList]] onMatch:^ParserResult *(ArrayParserResult *r) {
+        r.val = [GroupBy type:TGroupByCube fields:r.child[3].val loc:r.loc];
+        return r;
+    }];
+    ZKBaseParser *groupByClause = [f zeroOrOne:[f firstOf:@[groupByRollup, groupByCube, groupBy]]];
     
     /// ORDER BY
     ZKBaseParser *asc  = [[f eq:@"ASC"] onMatch:setValue(@YES)];
@@ -335,7 +350,7 @@
     ZKBaseParser *nulls = [[f seq:@[ws, [f eq:@"NULLS"], ws,
                                 [f oneOf:@[[[f eq:@"FIRST"] onMatch:setValue(@(NullsFirst))], [[f eq:@"LAST"] onMatch:setValue(@(NullsLast))]]]]]
                      onMatch:pick(3)];
-    ZKBaseParser *orderByField = [[f seq:@[fieldOnly, [f zeroOrOne:ascDesc], [f zeroOrOne:nulls]]] onMatch:^ParserResult*(ArrayParserResult*m) {
+    ZKBaseParser *orderByField = [[f seq:@[fieldOrFunc, [f zeroOrOne:ascDesc], [f zeroOrOne:nulls]]] onMatch:^ParserResult*(ArrayParserResult*m) {
         BOOL asc = YES;
         NSInteger nulls = NullsDefault;
         if (![m childIsNull:1]) {
@@ -355,14 +370,16 @@
     }]];
 
     /// SELECT
-    selectStmt.parser = [[f seq:@[maybeWs, [f eq:@"SELECT"], ws, selectExprs, ws, [f eq:@"FROM"], ws, objectRefs, filterScope, where, withDataCat, orderByFields, maybeWs]] onMatch:^ParserResult*(ArrayParserResult*m) {
+    selectStmt.parser = [[f seq:@[maybeWs, [f eq:@"SELECT"], ws, selectExprs, ws, [f eq:@"FROM"], ws, objectRefs,
+                                  filterScope, where, withDataCat, groupByClause, orderByFields, maybeWs]] onMatch:^ParserResult*(ArrayParserResult*m) {
         SelectQuery *q = [SelectQuery new];
         q.selectExprs = m.child[3].val;
         q.from = m.child[7].val;
         q.filterScope = [m childIsNull:8] ? nil : [m.child[8] posString];
         q.where = [m childIsNull:9] ? nil : m.child[9].val;
         q.withDataCategory = [m childIsNull:10] ? nil : [m.child[10].val valueForKey:@"val"];
-        q.orderBy = [m childIsNull:11] ? [OrderBys new] : m.child[11].val;
+        q.groupBy = [m childIsNull:11] ? nil : m.child[11].val;
+        q.orderBy = [m childIsNull:12] ? [OrderBys new] : m.child[12].val;
         m.val = q;
         q.loc = m.loc;
         return m;

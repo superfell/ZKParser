@@ -317,6 +317,33 @@ NSISO8601DateFormatter *dateTimeFormatter = nil;
 
 @end
 
+@implementation GroupBy
++(instancetype)type:(GroupingType)t fields:(NSArray<SelectField*>*)fields loc:(NSRange)loc {
+    NSAssert([fields isKindOfClass:[NSArray class]], @"fields should be an NSArray");
+    GroupBy *g = [self new];
+    g.type = t;
+    g.fields = fields;
+    g.loc = loc;
+    return g;
+}
+-(void)appendSoql:(NSMutableString *)dest {
+    if (self.fields.count == 0) {
+        return;
+    }
+    switch (self.type) {
+        case TGroupBy: [dest appendString:@" GROUP BY "]; break;
+        case TGroupByRollup: [dest appendString:@" GROUP BY ROLLUP("]; break;
+        case TGroupByCube: [dest appendString:@" GROUP BY CUBE("]; break;
+        default: NSAssert(FALSE, @"Unexpected groupingType of %d", self.type);
+    }
+    append(dest, self.fields);
+    if (self.type == TGroupByCube || self.type == TGroupByCube) {
+        [dest appendString:@")"];
+    }
+}
+@end
+
+
 @implementation OrderBys
 +(instancetype) by:(NSArray<OrderBy*>*)items loc:(NSRange)loc {
     OrderBys *r = [OrderBys new];
@@ -377,6 +404,7 @@ NSISO8601DateFormatter *dateTimeFormatter = nil;
         [dest appendString:@" WITH DATA CATEGORY "];
         append_sep(dest, self.withDataCategory, @" AND ");
     }
+    [self.groupBy appendSoql:dest];
     [self.orderBy appendSoql:dest];
     if (self.limit < NSIntegerMax) {
         [dest appendFormat:@" LIMIT %lu", self.limit];
