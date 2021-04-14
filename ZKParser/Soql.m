@@ -382,12 +382,6 @@ NSISO8601DateFormatter *dateTimeFormatter = nil;
 @end
 
 @implementation SelectQuery
--(instancetype)init {
-    self = [super init];
-    self.limit = NSIntegerMax;
-    return self;
-}
-
 -(void)appendSoql:(NSMutableString*)dest {
     [dest appendString:@"SELECT "];
 
@@ -410,11 +404,11 @@ NSISO8601DateFormatter *dateTimeFormatter = nil;
         [self.having appendSoql:dest];
     }
     [self.orderBy appendSoql:dest];
-    if (self.limit < NSIntegerMax) {
-        [dest appendFormat:@" LIMIT %lu", self.limit];
+    if (self.limit != nil) {
+        [dest appendFormat:@" LIMIT %@", self.limit];
     }
-    if (self.offset > 0) {
-        [dest appendFormat:@" OFFSET %lu", self.offset];
+    if (self.offset != nil) {
+        [dest appendFormat:@" OFFSET %@", self.offset];
     }
 }
 @end

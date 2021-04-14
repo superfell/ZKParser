@@ -370,4 +370,25 @@ SoqlParser *p = nil;
     XCTAssertNil(err);
 }
 
+-(void)testLimitOffset {
+    NSError *err = nil;
+    SelectQuery *res = [p parse:@"select name from contact limit 10" error:&err];
+    assertStringsEq(res.toSoql,@"SELECT name FROM contact LIMIT 10");
+    XCTAssertNil(err);
+
+    res = [p parse:@"select name from contact limit 10 offset 5" error:&err];
+    assertStringsEq(res.toSoql,@"SELECT name FROM contact LIMIT 10 OFFSET 5");
+    XCTAssertNil(err);
+
+    res = [p parse:@"select name from contact order by name desc offset 5" error:&err];
+    assertStringsEq(res.toSoql,@"SELECT name FROM contact ORDER BY name DESC OFFSET 5");
+    XCTAssertNil(err);
+
+    res = [p parse:@"select name from contact where name>'a'offset 5" error:&err];
+    assertStringsEq(res.toSoql,@"SELECT name FROM contact WHERE name > 'a' OFFSET 5");
+    XCTAssertNil(err);
+    
+    [p parse:@"select name from contact where name>'a'offset a" error:&err];
+    assertStringsEq(err.localizedDescription, @"expecting integer number at position 12");
+}
 @end

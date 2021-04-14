@@ -370,9 +370,11 @@
         return r;
     }]];
 
+    ZKBaseParser *limit = [f zeroOrOne:[[f seq:@[maybeWs, [f eq:@"LIMIT"], maybeWs, [f integerNumber]]] onMatch:pick(3)]];
+    ZKBaseParser *offset= [f zeroOrOne:[[f seq:@[maybeWs, [f eq:@"OFFSET"], maybeWs, [f integerNumber]]] onMatch:pick(3)]];
     /// SELECT
     selectStmt.parser = [[f seq:@[maybeWs, [f eq:@"SELECT"], ws, selectExprs, ws, [f eq:@"FROM"], ws, objectRefs,
-                                  filterScope, where, withDataCat, groupByClause, orderByFields, maybeWs]] onMatch:^ParserResult*(ArrayParserResult*m) {
+                                  filterScope, where, withDataCat, groupByClause, orderByFields, limit, offset, maybeWs]] onMatch:^ParserResult*(ArrayParserResult*m) {
         SelectQuery *q = [SelectQuery new];
         q.selectExprs = m.child[3].val;
         q.from = m.child[7].val;
@@ -385,8 +387,10 @@
             q.having = [o childIsNull:1] ? nil : o.child[1].val;
         }
         q.orderBy = [m childIsNull:12] ? [OrderBys new] : m.child[12].val;
-        m.val = q;
+        q.limit = [m childIsNull:13] ? nil : m.child[13].val;
+        q.offset = [m childIsNull:14] ? nil : m.child[14].val;
         q.loc = m.loc;
+        m.val = q;
         return m;
     }];
     return selectStmt;
