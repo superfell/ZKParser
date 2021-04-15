@@ -30,10 +30,10 @@
 }
 @end
 
-@implementation ArrayParserResult
+@implementation ZKArrayParserResult
 
 +(instancetype)result:(NSArray<ZKParserResult*>*)val loc:(NSRange)loc {
-    ArrayParserResult *r = [ArrayParserResult new];
+    ZKArrayParserResult *r = [ZKArrayParserResult new];
     r.val = val;
     r.loc = loc;
     r.child = val;
@@ -53,18 +53,18 @@
 
 @end
 
-ArrayResultMapper pick(NSUInteger idx) {
-    return ^ZKParserResult *(ArrayParserResult *r) {
+ZKArrayResultMapper pick(NSUInteger idx) {
+    return ^ZKParserResult *(ZKArrayParserResult *r) {
         return r.val[idx];
     };
 }
 
-ZKParserResult * pickVals(ArrayParserResult*r) {
+ZKParserResult * pickVals(ZKArrayParserResult*r) {
     r.val = [r childVals];
     return r;
 }
 
-ResultMapper setValue(NSObject *val) {
+ZKResultMapper setValue(NSObject *val) {
     return ^ZKParserResult *(ZKParserResult *r) {
         r.val = val;
         return r;

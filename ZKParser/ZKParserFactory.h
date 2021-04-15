@@ -19,12 +19,12 @@
 @interface ZKSingularParser : ZKBaseParser
 // Sets the supplied mapper block, which will be called if the parse is successfull.
 // returns the parser to make it easer to chain onMatch calls to new parsers.
--(instancetype)onMatch:(ResultMapper)block;
+-(instancetype)onMatch:(ZKResultMapper)block;
 @end
 
 // All parsers that return an array of results should extend this.
 @interface ZKArrayParser: ZKBaseParser
--(instancetype)onMatch:(ArrayResultMapper)block;
+-(instancetype)onMatch:(ZKArrayResultMapper)block;
 @end
 
 // ParserRef lets you pass a parser to another parser, and later

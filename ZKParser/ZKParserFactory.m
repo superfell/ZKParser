@@ -9,11 +9,11 @@
 #import "ZKParserFactory.h"
 
 @interface ZKSingularParser()
-@property (copy,nonatomic) ResultMapper mapper;
+@property (copy,nonatomic) ZKResultMapper mapper;
 @end
 
 @interface ZKArrayParser()
-@property (copy,nonatomic) ArrayResultMapper mapper;
+@property (copy,nonatomic) ZKArrayResultMapper mapper;
 @end
 
 @interface ZKParserExact : ZKSingularParser
@@ -95,7 +95,7 @@
 @end
 
 @implementation ZKSingularParser
--(instancetype)onMatch:(ResultMapper)block {
+-(instancetype)onMatch:(ZKResultMapper)block {
     self.mapper = block;
     return self;
 }
@@ -109,15 +109,15 @@
 @end
 
 @implementation ZKArrayParser
--(instancetype)onMatch:(ArrayResultMapper)block {
+-(instancetype)onMatch:(ZKArrayResultMapper)block {
     self.mapper = block;
     return self;
 }
 -(ZKParserResult *)parse:(ZKParsingState*)input error:(NSError **)err {
     ZKParserResult *r = [super parse:input error:err];
     if (*err == nil && self.mapper != nil) {
-        assert([r isKindOfClass:[ArrayParserResult class]]);
-        r = self.mapper((ArrayParserResult*)r);
+        assert([r isKindOfClass:[ZKArrayParserResult class]]);
+        r = self.mapper((ZKArrayParserResult*)r);
     }
     return r;
 }
@@ -379,7 +379,7 @@
         }
         [results addObject:res];
     }
-    return [ArrayParserResult result:results loc:NSMakeRange(start, input.pos-start)];
+    return [ZKArrayParserResult result:results loc:NSMakeRange(start, input.pos-start)];
 }
 
 -(NSString*)description {
@@ -424,7 +424,7 @@
         }
     }
     if (results.count >= self.min) {
-        return [ArrayParserResult result:results loc:NSMakeRange(start, input.pos-start)];
+        return [ZKArrayParserResult result:results loc:NSMakeRange(start, input.pos-start)];
     }
     *err = nextError;
     return nil;

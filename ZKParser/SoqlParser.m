@@ -170,14 +170,14 @@
     // SELECT LIST
     ZKParserRef *selectStmt = [f parserRef];
     ZKBaseParser *alias = [f zeroOrOne:[[f seq:@[ws, ident]] onMatch:pick(1)] ignoring:ignoreKeywords];
-    ZKBaseParser* fieldOnly = [[f oneOrMore:ident separator:[f eq:@"."]] onMatch:^ZKParserResult *(ArrayParserResult *m) {
+    ZKBaseParser* fieldOnly = [[f oneOrMore:ident separator:[f eq:@"."]] onMatch:^ZKParserResult *(ZKArrayParserResult *m) {
         m.val = [SelectField name:[PositionedString fromArray:m.val]
                             alias:nil
                               loc:m.loc];
         return m;
     }];
     fieldOnly.debugName = @"fieldOnly";
-    ZKBaseParser* fieldAndAlias = [[f seq:@[[f oneOrMore:ident separator:[f eq:@"."]], alias]] onMatch:^ZKParserResult *(ArrayParserResult *m) {
+    ZKBaseParser* fieldAndAlias = [[f seq:@[[f oneOrMore:ident separator:[f eq:@"."]], alias]] onMatch:^ZKParserResult *(ZKArrayParserResult *m) {
         m.val = [SelectField name:[PositionedString fromArray:m.child[0].val]
                             alias:([m childIsNull:1] ? nil : [m.child[1] posString])
                               loc:m.loc];
@@ -193,7 +193,7 @@
                               maybeWs,
                               [f eq:@")"],
                               alias
-                            ]] onMatch:^ZKParserResult*(ArrayParserResult*m) {
+                            ]] onMatch:^ZKParserResult*(ZKArrayParserResult*m) {
         
         m.val = [SelectFunc name:[m.child[0] posString]
                             args:[m.child[4].val valueForKey:@"val"]
@@ -203,13 +203,13 @@
     }];
     
     fieldOrFunc.parser = [f firstOf:@[func, fieldAndAlias]];
-    ZKBaseParser *nestedSelectStmt = [[f seq:@[[f eq:@"("], selectStmt, [f eq:@")"]]] onMatch:^ZKParserResult*(ArrayParserResult*r) {
+    ZKBaseParser *nestedSelectStmt = [[f seq:@[[f eq:@"("], selectStmt, [f eq:@")"]]] onMatch:^ZKParserResult*(ZKArrayParserResult*r) {
         SelectQuery *q = r.child[1].val;
         r.val = [NestedSelectQuery from:q];
         return r;
     }];
     ZKBaseParser *typeOfWhen = [[f seq:@[[f eq:@"WHEN"], ws, ident, ws, [f eq:@"THEN"], ws,
-                                         [f oneOrMore:fieldOnly separator:commaSep]]] onMatch:^ZKParserResult *(ArrayParserResult *r) {
+                                         [f oneOrMore:fieldOnly separator:commaSep]]] onMatch:^ZKParserResult *(ZKArrayParserResult *r) {
         PositionedString *obj = [r.child[2] posString];
         NSArray *fields = [r.child[6].val valueForKey:@"val"];
         r.val = [TypeOfWhen sobject:obj select:fields loc:r.loc];
@@ -221,7 +221,7 @@
                                 ident, ws,
                                 [f oneOrMore:typeOfWhen separator:ws], maybeWs,
                                 [f zeroOrOne:typeOfElse], ws,
-                                [f eq:@"END"]]] onMatch:^ZKParserResult *(ArrayParserResult *r) {
+                                [f eq:@"END"]]] onMatch:^ZKParserResult *(ZKArrayParserResult *r) {
         TypeOf *t = [TypeOf new];
         t.relationship = [r.child[2] posString];
         t.whens = [r.child[4].val valueForKey:@"val"];
@@ -233,11 +233,11 @@
     typeOfWhen.debugName = @"typeofWhen";
     typeOfElse.debugName = @"typeofElse";
     
-    ZKBaseParser* selectExprs = [[f oneOrMore:[f firstOf:@[func, typeOf, fieldAndAlias, nestedSelectStmt]] separator:commaSep] onMatch:^ZKParserResult *(ArrayParserResult *r) {
+    ZKBaseParser* selectExprs = [[f oneOrMore:[f firstOf:@[func, typeOf, fieldAndAlias, nestedSelectStmt]] separator:commaSep] onMatch:^ZKParserResult *(ZKArrayParserResult *r) {
         r.val = r.childVals;
         return r;
     }];
-    ZKBaseParser *countOnly = [[f seq:@[[f eq:@"count"], maybeWs, [f eq:@"("], maybeWs, [f eq:@")"]]] onMatch:^ZKParserResult *(ArrayParserResult *r) {
+    ZKBaseParser *countOnly = [[f seq:@[[f eq:@"count"], maybeWs, [f eq:@"("], maybeWs, [f eq:@")"]]] onMatch:^ZKParserResult *(ZKArrayParserResult *r) {
         // Should we just let count() be handled by the regular func matcher? and not deal with the fact it can only
         // appear on its own.
         r.val =@[[SelectFunc name:[r.child[0] posString] args:@[] alias:nil loc:r.loc]];
@@ -246,7 +246,7 @@
     selectExprs = [f oneOf:@[selectExprs, countOnly]];
 
     /// FROM
-    ZKBaseParser *objectRef = [[f seq:@[ident, alias]] onMatch:^ZKParserResult *(ArrayParserResult *m) {
+    ZKBaseParser *objectRef = [[f seq:@[ident, alias]] onMatch:^ZKParserResult *(ZKArrayParserResult *m) {
         m.val = [SObjectRef name:m.child[0].posString
                            alias:[m childIsNull:1] ? nil : m.child[1].posString
                              loc:m.loc];
@@ -254,7 +254,7 @@
     }];
     ZKBaseParser *objectRefs = [[f seq:@[objectRef, [f zeroOrOne:
                                 [[f seq:@[commaSep, [f oneOrMore:fieldAndAlias separator:commaSep]]] onMatch:pick(1)]]]]
-                          onMatch:^ZKParserResult *(ArrayParserResult*r) {
+                          onMatch:^ZKParserResult *(ZKArrayParserResult*r) {
         r.val = [From sobject:r.child[0].val
                       related:[r childIsNull:1] ? @[] : [r.child[1].val valueForKey:@"val"]
                           loc:r.loc];
@@ -269,7 +269,7 @@
     ZKBaseParser *literalStringList = [[f seq:@[    [f eq:@"("], maybeWs,
                                                 [f oneOrMore:[self literalStringValue:f] separator:commaSep],
                                                 maybeWs, [f eq:@")"]]]
-                                   onMatch:^ZKParserResult*(ArrayParserResult*r) {
+                                   onMatch:^ZKParserResult*(ZKArrayParserResult*r) {
         NSArray* vals = [r.child[2].val valueForKey:@"val"];
         r.val = [LiteralValueArray withValues:vals loc:r.loc];
         return r;
@@ -279,8 +279,8 @@
         [f seq:@[opIncExcl, maybeWs, literalStringList]],
         [f seq:@[opInNotIn, maybeWs, [f oneOf:@[literalStringList, nestedSelectStmt]]]]]];
 
-    ZKBaseParser *baseExpr = [[f seq:@[fieldOrFunc, maybeWs, operatorRHS]] onMatch:^ZKParserResult *(ArrayParserResult *r) {
-        ArrayParserResult *opRhs = (ArrayParserResult*)r.child[2];
+    ZKBaseParser *baseExpr = [[f seq:@[fieldOrFunc, maybeWs, operatorRHS]] onMatch:^ZKParserResult *(ZKArrayParserResult *r) {
+        ZKArrayParserResult *opRhs = (ZKArrayParserResult*)r.child[2];
         r.val = [ComparisonExpr left:r.child[0].val op:[opRhs.child[0] posString] right:opRhs.child[2].val loc:r.loc];
         return r;
     }];
@@ -291,10 +291,10 @@
     ZKBaseParser *parens = [[f seq:@[[f eq:@"("], maybeWs, exprList, maybeWs, [f eq:@")"]]] onMatch:pick(2)];
     ZKBaseParser *andOr = [[f seq:@[ws, [f oneOfTokens:@"AND OR"], ws]] onMatch:pick(1)];
     ZKBaseParser *not = [f seq:@[[f eq:@"NOT"], maybeWs]];
-    exprList.parser = [[f seq:@[[f zeroOrOne:not],[f firstOf:@[parens, baseExpr]], [f zeroOrOne:[f seq:@[andOr, exprList]]]]] onMatch:^ZKParserResult*(ArrayParserResult*r) {
+    exprList.parser = [[f seq:@[[f zeroOrOne:not],[f firstOf:@[parens, baseExpr]], [f zeroOrOne:[f seq:@[andOr, exprList]]]]] onMatch:^ZKParserResult*(ZKArrayParserResult*r) {
         Expr *expr = r.child[1].val;
         if (![r childIsNull:2]) {
-            ArrayParserResult *rhs = (ArrayParserResult *)r.child[2];
+            ZKArrayParserResult *rhs = (ZKArrayParserResult *)r.child[2];
             PositionedString *op = [rhs.child[0] posString];
             Expr *right = rhs.child[1].val;
             expr = [OpAndOrExpr left:expr op:op right:right loc:NSUnionRange(r.child[1].loc, r.child[2].loc)];
@@ -320,7 +320,7 @@
         }
         return r;
     }];
-    ZKBaseParser *catFilter = [[f seq:@[ident, ws, [f oneOfTokens:@"AT ABOVE BELOW ABOVE_OR_BELOW"], maybeWs, catFilterVal]] onMatch:^ZKParserResult*(ArrayParserResult*r) {
+    ZKBaseParser *catFilter = [[f seq:@[ident, ws, [f oneOfTokens:@"AT ABOVE BELOW ABOVE_OR_BELOW"], maybeWs, catFilterVal]] onMatch:^ZKParserResult*(ZKArrayParserResult*r) {
         r.val = [DataCategoryFilter filter:r.child[0].posString op:r.child[2].posString values:r.child[4].val loc:r.loc];
         return r;
     }];
@@ -328,16 +328,16 @@
                                                        [f oneOrMore:catFilter separator:[f seq:@[ws,[f eq:@"AND"],ws]]]]] onMatch:pick(3)]];
     
     /// GROUP BY
-    ZKBaseParser *groupBy = [[f seq:@[ws, tokenSeq(@"GROUP BY"), ws, [f oneOrMore:fieldOrFunc separator:commaSep]]] onMatch:^ZKParserResult *(ArrayParserResult *r) {
+    ZKBaseParser *groupBy = [[f seq:@[ws, tokenSeq(@"GROUP BY"), ws, [f oneOrMore:fieldOrFunc separator:commaSep]]] onMatch:^ZKParserResult *(ZKArrayParserResult *r) {
         r.val = [GroupBy type:TGroupBy fields:[r.child[3].val valueForKey:@"val"] loc:r.loc];
         return r;
     }];
     ZKBaseParser *groupByFieldList = [[f seq:@[[f eq:@"("], maybeWs, [f oneOrMore:fieldOrFunc separator:commaSep], maybeWs, [f eq:@")"]]] onMatch:pick(2)];
-    ZKBaseParser *groupByRollup = [[f seq:@[ws, tokenSeq(@"GROUP BY ROLLUP"),maybeWs, groupByFieldList]] onMatch:^ZKParserResult *(ArrayParserResult *r) {
+    ZKBaseParser *groupByRollup = [[f seq:@[ws, tokenSeq(@"GROUP BY ROLLUP"),maybeWs, groupByFieldList]] onMatch:^ZKParserResult *(ZKArrayParserResult *r) {
         r.val = [GroupBy type:TGroupByRollup fields:[r.child[3].val valueForKey:@"val"] loc:r.loc];
         return r;
     }];
-    ZKBaseParser *groupByCube = [[f seq:@[ws, tokenSeq(@"GROUP BY CUBE"), maybeWs, groupByFieldList]] onMatch:^ZKParserResult *(ArrayParserResult *r) {
+    ZKBaseParser *groupByCube = [[f seq:@[ws, tokenSeq(@"GROUP BY CUBE"), maybeWs, groupByFieldList]] onMatch:^ZKParserResult *(ZKArrayParserResult *r) {
         r.val = [GroupBy type:TGroupByCube fields:[r.child[3].val valueForKey:@"val"] loc:r.loc];
         return r;
     }];
@@ -351,7 +351,7 @@
     ZKBaseParser *nulls = [[f seq:@[ws, [f eq:@"NULLS"], ws,
                                 [f oneOf:@[[[f eq:@"FIRST"] onMatch:setValue(@(NullsFirst))], [[f eq:@"LAST"] onMatch:setValue(@(NullsLast))]]]]]
                      onMatch:pick(3)];
-    ZKBaseParser *orderByField = [[f seq:@[fieldOrFunc, [f zeroOrOne:ascDesc], [f zeroOrOne:nulls]]] onMatch:^ZKParserResult*(ArrayParserResult*m) {
+    ZKBaseParser *orderByField = [[f seq:@[fieldOrFunc, [f zeroOrOne:ascDesc], [f zeroOrOne:nulls]]] onMatch:^ZKParserResult*(ZKArrayParserResult*m) {
         BOOL asc = YES;
         NSInteger nulls = NullsDefault;
         if (![m childIsNull:1]) {
@@ -363,18 +363,18 @@
         m.val = [OrderBy field:m.child[0].val asc:asc nulls:nulls loc:m.loc];
         return m;
     }];
-    ZKBaseParser *orderByFields = [f zeroOrOne:[[f seq:@[maybeWs, [f eq:@"ORDER"], ws, [f eq:@"BY"], ws, [f oneOrMore:orderByField separator:commaSep]]] onMatch:^ZKParserResult*(ArrayParserResult*r) {
+    ZKBaseParser *orderByFields = [f zeroOrOne:[[f seq:@[maybeWs, [f eq:@"ORDER"], ws, [f eq:@"BY"], ws, [f oneOrMore:orderByField separator:commaSep]]] onMatch:^ZKParserResult*(ZKArrayParserResult*r) {
         
         // loc for OrderBys is just the ORDER BY keyword. TODO, we probably don't want that.
         r.val = [OrderBys by:[r.child[5].val valueForKey:@"val"] loc:NSUnionRange(r.child[1].loc, r.child[3].loc)];
         return r;
     }]];
 
-    ZKBaseParser *limit = [f zeroOrOne:[[f seq:@[maybeWs, [f eq:@"LIMIT"], maybeWs, [f integerNumber]]] onMatch:^ZKParserResult*(ArrayParserResult*r) {
+    ZKBaseParser *limit = [f zeroOrOne:[[f seq:@[maybeWs, [f eq:@"LIMIT"], maybeWs, [f integerNumber]]] onMatch:^ZKParserResult*(ZKArrayParserResult*r) {
         r.val = [PositionedValue<NSNumber*> value:r.child[3].val loc:r.child[3].loc];
         return r;
     }]];
-    ZKBaseParser *offset= [f zeroOrOne:[[f seq:@[maybeWs, [f eq:@"OFFSET"], maybeWs, [f integerNumber]]] onMatch:^ZKParserResult*(ArrayParserResult*r) {
+    ZKBaseParser *offset= [f zeroOrOne:[[f seq:@[maybeWs, [f eq:@"OFFSET"], maybeWs, [f integerNumber]]] onMatch:^ZKParserResult*(ZKArrayParserResult*r) {
         r.val = [PositionedValue<NSNumber*> value:r.child[3].val loc:r.child[3].loc];
         return r;
     }]];
@@ -383,7 +383,7 @@
 
     /// SELECT
     selectStmt.parser = [[f seq:@[maybeWs, [f eq:@"SELECT"], ws, selectExprs, ws, [f eq:@"FROM"], ws, objectRefs,
-                                  filterScope, where, withDataCat, groupByClause, orderByFields, limit, offset, forView, updateTracking, maybeWs]] onMatch:^ZKParserResult*(ArrayParserResult*m) {
+                                  filterScope, where, withDataCat, groupByClause, orderByFields, limit, offset, forView, updateTracking, maybeWs]] onMatch:^ZKParserResult*(ZKArrayParserResult*m) {
         SelectQuery *q = [SelectQuery new];
         q.selectExprs = m.child[3].val;
         q.from = m.child[7].val;
@@ -391,7 +391,7 @@
         q.where = [m childIsNull:9] ? nil : m.child[9].val;
         q.withDataCategory = [m childIsNull:10] ? nil : [m.child[10].val valueForKey:@"val"];
         if (![m childIsNull:11]) {
-            ArrayParserResult *o = (ArrayParserResult*)m.child[11];
+            ZKArrayParserResult *o = (ZKArrayParserResult*)m.child[11];
             q.groupBy = o.child[0].val;
             q.having = [o childIsNull:1] ? nil : o.child[1].val;
         }
