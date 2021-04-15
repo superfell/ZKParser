@@ -25,6 +25,8 @@ typedef enum ZKCaseSensitivity {
 +(ZKParsingState *)withInput:(NSString *)s;
 
 @property (assign) NSUInteger pos;
+@property (assign) NSUInteger cut;
+
 -(NSUInteger)length;    // remaining length
 -(NSString *)value;     // remaining input text
 
@@ -34,6 +36,8 @@ typedef enum ZKCaseSensitivity {
 -(NSString *)consumeString:(NSString *)s caseSensitive:(ZKCaseSensitivity)cs;
 -(BOOL)consumeCharacterSet:(NSCharacterSet *)s;
 
+-(void)markCut;
+-(BOOL)canMoveTo:(NSUInteger)pos;
 -(void)moveTo:(NSUInteger)pos;
 
 -(NSString*)input;

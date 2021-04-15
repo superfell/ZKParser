@@ -103,4 +103,12 @@ typedef ZKParserResult *(^ZKParseBlock)(ZKParsingState*input,NSError **err);
 /// refer to as yet unconstructed parsers where there are circular or recursive definitions.
 -(ZKParserRef*)parserRef;
 
+/// returns a parser that will prevent future backtracking to go before this point. This is useful in generating
+/// better error messages for sequences of parsers where the partial progress is good. e.g.
+/// given sequence zeroOrOne:[eq:"LIMIT", whitespace, integer] a failure to parse an integer will back track
+/// to the start of the sequence and give an error message along the lines of unexpected input LIMIT...
+/// Adding a cut after LIMIT will prevent backtracking to before the LIMIT token and result in an error of
+/// expecting integer at ...
+-(ZKBaseParser*)cut;
+
 @end

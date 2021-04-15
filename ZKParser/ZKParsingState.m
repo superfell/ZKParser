@@ -73,6 +73,14 @@
     return NO;
 }
 
+-(void)markCut {
+    self.cut = self.pos;
+}
+
+-(BOOL)canMoveTo:(NSUInteger)pos {
+    return self.pos >= self.cut;
+}
+
 -(void)moveTo:(NSUInteger)pos {
     self.pos = pos;
 }

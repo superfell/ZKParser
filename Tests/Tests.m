@@ -322,4 +322,19 @@ ZKParserResult *r(id val, NSInteger start, NSInteger count) {
     XCTAssertNil(err);
 }
 
+-(void)testCut {
+    // without cut
+    ZKBaseParser *p1 = [f seq:@[[f eq:@"LIMIT"], [f whitespace], [f integerNumber]]];
+    ZKBaseParser *p = [f zeroOrOne:p1];
+    NSError *err = nil;
+    [@"LIMIT bob" parse:p error:&err];
+    XCTAssertEqualObjects(@"Unexpected input 'LIMIT bob' at position 1", err.localizedDescription);
+
+    p1 = [f seq:@[[f eq:@"LIMIT"], [f cut], [f whitespace], [f integerNumber]]];
+    p = [f zeroOrOne:p1];
+    err = nil;
+    [@"LIMIT bob" parse:p error:&err];
+    XCTAssertEqualObjects(@"expecting an integer at position 7", err.localizedDescription);
+}
+
 @end

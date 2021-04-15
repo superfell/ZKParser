@@ -77,7 +77,6 @@
 }
 
 -(ZKParserResult *)parse:(ZKParsingState*)input error:(NSError **)err {
-    // TODO add debug logging back in
     *err = nil;
     NSInteger start = input.pos;
     ZKParserResult *r = [self parseImpl:input error:err];
@@ -324,6 +323,10 @@
         if (*err == nil) {
             return r;
         }
+        // The cut point was moved past our start, we're done.
+        if (![input canMoveTo:start]) {
+            return nil;
+        }
         [input moveTo:start];
     }
     return nil;
@@ -351,6 +354,11 @@
         }
         if (childErr != nil && *err == nil) {
             *err = childErr;
+        }
+        if (![input canMoveTo:start]) {
+            // The cut point was moved past our start, we're done
+            *err = childErr;
+            return nil;
         }
         [input moveTo:start];
     }
@@ -445,9 +453,12 @@
             return res;
         }
     }
-    *err = nil;
-    [input moveTo:start];
-    return [ZKParserResult result:[NSNull null] loc:NSMakeRange(start,0)];
+    if ([input canMoveTo:start]) {
+        *err = nil;
+        [input moveTo:start];
+        return [ZKParserResult result:[NSNull null] loc:NSMakeRange(start,0)];
+    }
+    return nil;
 }
 
 -(NSString *)description {
@@ -644,6 +655,15 @@
 
 -(ZKParserRef*)parserRef {
     return [self wrapDebug:[ZKParserRef new]];
+}
+
+-(ZKBaseParser*)cut {
+    ZKBaseParser *p = [self fromBlock:^ZKParserResult *(ZKParsingState *input, NSError *__autoreleasing *err) {
+        [input markCut];
+        return [ZKParserResult result:[NSNull null] loc:NSMakeRange(input.pos,0)];
+    }];
+    p.debugName = @"CUT";
+    return p;
 }
 
 -(id)wrapDebug:(ZKBaseParser *)p {
