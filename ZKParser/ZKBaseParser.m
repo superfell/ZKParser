@@ -8,69 +8,6 @@
 
 #import "ZKBaseParser.h"
 
-@implementation ParserResult
-+(instancetype)result:(NSObject*)val loc:(NSRange)loc {
-    ParserResult *r = [self new];
-    r.val = val;
-    r.loc = loc;
-    return r;
-}
-
--(BOOL)isEqual:(ParserResult*)other {
-    return [self.val isEqual:other.val] && (self.loc.location == other.loc.location) && (self.loc.length == other.loc.length);
-}
--(NSArray<ParserResult*>*)children {
-    assert([self.val isKindOfClass:[NSArray class]]);
-    return self.val;
-}
-
--(NSString*)description {
-    return [NSString stringWithFormat:@"%@ {%lu,%lu}", self.val, self.loc.location, self.loc.length];
-}
-@end
-
-@implementation ArrayParserResult
-
-+(instancetype)result:(NSArray<ParserResult*>*)val loc:(NSRange)loc {
-    ArrayParserResult *r = [ArrayParserResult new];
-    r.val = val;
-    r.loc = loc;
-    r.child = val;
-    return r;
-}
--(NSArray*)childVals {
-    return [self.child valueForKey:@"val"];
-}
--(BOOL)childIsNull:(NSInteger)idx {
-    ParserResult *r = self.child[idx];
-    return r.val == [NSNull null] || r.val == nil;
-}
--(void)setVal:(id)v {
-    super.val = v;
-    self.child = v;
-}
-
-@end
-
-ArrayResultMapper pick(NSUInteger idx) {
-    return ^ParserResult *(ArrayParserResult *r) {
-        return r.val[idx];
-    };
-}
-
-ParserResult * pickVals(ArrayParserResult*r) {
-    r.val = [r childVals];
-    return r;
-}
-
-ResultMapper setValue(NSObject *val) {
-    return ^ParserResult *(ParserResult *r) {
-        r.val = val;
-        return r;
-    };
-}
-
-
 @interface ZKSingularParser()
 @property (copy,nonatomic) ResultMapper mapper;
 @end
@@ -145,7 +82,7 @@ ResultMapper setValue(NSObject *val) {
     NSInteger start = input.pos;
     ParserResult *r = [self parseImpl:input error:err];
     if (*err != nil) {
-        [input rewindTo:start];
+        [input moveTo:start];
     }
     return r;
 }
@@ -387,7 +324,7 @@ ResultMapper setValue(NSObject *val) {
         if (*err == nil) {
             return r;
         }
-        [input rewindTo:start];
+        [input moveTo:start];
     }
     return nil;
 }
@@ -415,11 +352,11 @@ ResultMapper setValue(NSObject *val) {
         if (childErr != nil && *err == nil) {
             *err = childErr;
         }
-        [input rewindTo:start];
+        [input moveTo:start];
     }
     if (success) {
         *err = nil;
-        [input rewindTo:longestPos];
+        [input moveTo:longestPos];
     }
     return longestRes;
 }
@@ -480,7 +417,7 @@ ResultMapper setValue(NSObject *val) {
             ParserResult *next = [self.parser parse:input error:&nextError];
             if (nextError != nil) {
                 // unconsume the separator above
-                [input rewindTo:thisStart];
+                [input moveTo:thisStart];
                 break;
             }
             [results addObject:next];
@@ -509,7 +446,7 @@ ResultMapper setValue(NSObject *val) {
         }
     }
     *err = nil;
-    [input rewindTo:start];
+    [input moveTo:start];
     return [ParserResult result:[NSNull null] loc:NSMakeRange(start,0)];
 }
 

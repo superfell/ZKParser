@@ -34,7 +34,7 @@ typedef enum ZKCaseSensitivity {
 -(NSString *)consumeString:(NSString *)s caseSensitive:(ZKCaseSensitivity)cs;
 -(BOOL)consumeCharacterSet:(NSCharacterSet *)s;
 
--(void)rewindTo:(NSUInteger)pos;
+-(void)moveTo:(NSUInteger)pos;
 
 -(NSString*)input;
 -(NSString*)valueOfRange:(NSRange)r;

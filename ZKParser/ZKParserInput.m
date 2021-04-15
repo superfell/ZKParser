@@ -73,7 +73,7 @@
     return NO;
 }
 
--(void)rewindTo:(NSUInteger)pos {
+-(void)moveTo:(NSUInteger)pos {
     self.pos = pos;
 }
 
