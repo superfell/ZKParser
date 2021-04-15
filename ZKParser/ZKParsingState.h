@@ -1,5 +1,5 @@
 //
-//  ZKParserInput.h
+//  ZKParsingState.h
 //  ZKParser
 //
 //  Created by Simon Fell on 4/7/21.
@@ -20,9 +20,9 @@ typedef enum ZKCaseSensitivity {
 -(ParserResult*)parse:(ZKBaseParser*)p error:(NSError **)err;
 @end
 
-@interface ZKParserInput : NSObject
+@interface ZKParsingState : NSObject
 
-+(ZKParserInput *)withInput:(NSString *)s;
++(ZKParsingState *)withInput:(NSString *)s;
 
 @property (assign) NSUInteger pos;
 -(NSUInteger)length;    // remaining length

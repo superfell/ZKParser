@@ -12,19 +12,19 @@
 @implementation NSString(ZKParsing)
 
 -(NSObject*)parse:(ZKBaseParser*)p error:(NSError **)err {
-    return [[ZKParserInput withInput:self] parse:p error:err];
+    return [[ZKParsingState withInput:self] parse:p error:err];
 }
 
 @end
 
-@interface ZKParserInput()
+@interface ZKParsingState()
 @property (strong,nonatomic) NSString *input;
 @end
 
-@implementation ZKParserInput
+@implementation ZKParsingState
 
-+(ZKParserInput *)withInput:(NSString *)s {
-    ZKParserInput *r = [[ZKParserInput alloc] init];
++(ZKParsingState *)withInput:(NSString *)s {
+    ZKParsingState *r = [[ZKParsingState alloc] init];
     r.input = s;
     r.pos = 0;
     return r;

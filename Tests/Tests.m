@@ -128,18 +128,18 @@ ParserResult *r(id val, NSInteger start, NSInteger count) {
 
 -(void)testWhitespace {
     ZKBaseParser* ws = [f whitespace];
-    ZKParserInput *i = [ZKParserInput withInput:@" Hello"];
+    ZKParsingState *i = [ZKParsingState withInput:@" Hello"];
     NSError *err = nil;
     [ws parse:i error:&err];
     XCTAssertEqualObjects(@"Hello", i.value);
     XCTAssertNil(err);
 
-    i = [ZKParserInput withInput:@" \t Hello"];
+    i = [ZKParsingState withInput:@" \t Hello"];
     [ws parse:i error:&err];
     XCTAssertEqualObjects(@"Hello", i.value);
     XCTAssertNil(err);
 
-    i = [ZKParserInput withInput:@"Hello"];
+    i = [ZKParsingState withInput:@"Hello"];
     [ws parse:i error:&err];
     XCTAssertEqual(5, i.length);
     XCTAssertEqualObjects(@"expecting whitespace at position 1", err.localizedDescription);
@@ -148,15 +148,15 @@ ParserResult *r(id val, NSInteger start, NSInteger count) {
 -(void)testCharacterSet {
     ZKBaseParser* p = [f characters:[NSCharacterSet characterSetWithCharactersInString:@"ABC"] name:@"Id" min:3];
     NSError *err = nil;
-    ZKParserInput *i = [ZKParserInput withInput:@"AAAABC"];
+    ZKParsingState *i = [ZKParsingState withInput:@"AAAABC"];
     NSObject *res = [p parse:i error:&err];
     XCTAssertEqualObjects(r(@"AAAABC",0,6), res);
 
-    i = [ZKParserInput withInput:@"AAA"];
+    i = [ZKParsingState withInput:@"AAA"];
     res = [p parse:i error:&err];
     XCTAssertEqualObjects(r(@"AAA",0,3), res);
 
-    i = [ZKParserInput withInput:@"AA"];
+    i = [ZKParsingState withInput:@"AA"];
     res = [p parse:i error:&err];
     XCTAssertNil(res);
     XCTAssertEqualObjects(@"expecting Id at position 1", err.localizedDescription);
@@ -177,7 +177,7 @@ ParserResult *r(id val, NSInteger start, NSInteger count) {
     XCTAssertEqualObjects(@(321), r.val);
     r = [@"-321" parse:p error:&err];
     XCTAssertEqualObjects(@(-321), r.val);
-    ZKParserInput *i = [ZKParserInput withInput:@"-321bob"];
+    ZKParsingState *i = [ZKParsingState withInput:@"-321bob"];
     r = [p parse:i error:&err];
     XCTAssertEqualObjects(@(-321), r.val);
     XCTAssertEqual(4, i.pos);
@@ -221,7 +221,7 @@ ParserResult *r(id val, NSInteger start, NSInteger count) {
     XCTAssertEqualObjects(dec(@"-0.1234"), r.val);
     r = [@"+.1234" parse:p error:&err];
     XCTAssertEqualObjects(dec(@"0.1234"), r.val);
-    ZKParserInput *i = [ZKParserInput withInput:@"-321bob"];
+    ZKParsingState *i = [ZKParsingState withInput:@"-321bob"];
     r = [p parse:i error:&err];
     XCTAssertEqualObjects(@(-321), r.val);
     XCTAssertEqual(4, i.pos);
@@ -249,7 +249,7 @@ ParserResult *r(id val, NSInteger start, NSInteger count) {
                                                                           error:&err];
     XCTAssertNil(err);
     ZKBaseParser *p = [f regex:re name:@"number"];
-    ZKParserInput *i = [ZKParserInput withInput:@"ABC20-30DEF"];
+    ZKParsingState *i = [ZKParsingState withInput:@"ABC20-30DEF"];
     [p parse:i error:&err];
     XCTAssertEqualObjects(@"expecting a number at position 1", err.localizedDescription);
     i.pos = 3; // something else consumed ABC;
@@ -273,7 +273,7 @@ ParserResult *r(id val, NSInteger start, NSInteger count) {
     ZKBaseParser* bobs = [f oneOrMore:bob];
     NSObject *exp = @[r(@"B",0,3),r(@"B",3,3),r(@"B",6,3)];
     NSError *err = nil;
-    XCTAssertEqualObjects(exp, [bobs parse:[ZKParserInput withInput:@"BobBobBob"] error:&err].val);
+    XCTAssertEqualObjects(exp, [bobs parse:[ZKParsingState withInput:@"BobBobBob"] error:&err].val);
     XCTAssertNil(err);
     
     bobs = [f oneOrMore:bob separator:[f eq:@","]];

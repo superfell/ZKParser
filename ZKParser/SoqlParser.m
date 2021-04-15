@@ -33,7 +33,7 @@
 }
 
 -(ZKSingularParser*)literalStringValue:(ZKParserFactory*)f {
-    return [f fromBlock:^ParserResult *(ZKParserInput *input, NSError *__autoreleasing *err) {
+    return [f fromBlock:^ParserResult *(ZKParsingState *input, NSError *__autoreleasing *err) {
         NSInteger start = input.pos;
         if ((!input.hasMoreInput) || input.currentChar != '\'') {
             *err = [NSError errorWithDomain:@"Soql"

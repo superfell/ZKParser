@@ -7,11 +7,11 @@
 //
 
 #import <Foundation/Foundation.h>
-#import "ZKParserInput.h"
+#import "ZKParsingState.h"
 #import "ZKParserResult.h"
 
 @interface ZKBaseParser : NSObject
--(ParserResult *)parse:(ZKParserInput*)input error:(NSError **)err;
+-(ParserResult *)parse:(ZKParsingState*)input error:(NSError **)err;
 -(void)setDebugName:(NSString *)n;
 @end
 
@@ -34,7 +34,7 @@
 @property (strong,nonatomic) ZKBaseParser *parser;
 @end
 
-typedef ParserResult *(^ParseBlock)(ZKParserInput*input,NSError **err);
+typedef ParserResult *(^ZKParseBlock)(ZKParsingState*input,NSError **err);
 
 @interface ZKParserFactory : NSObject
 
@@ -97,7 +97,7 @@ typedef ParserResult *(^ParseBlock)(ZKParserInput*input,NSError **err);
 -(ZKSingularParser*)zeroOrOne:(ZKBaseParser*)p ignoring:(BOOL(^)(NSObject*))ignoreBlock;
 
 /// constructs a new parser instance from the parser implemention in the block.
--(ZKSingularParser*)fromBlock:(ParseBlock)parser;
+-(ZKSingularParser*)fromBlock:(ZKParseBlock)parser;
 
 /// Constucts a new parser that contains a reference to another parser. Can be used to
 /// refer to as yet unconstructed parsers where there are circular or recursive definitions.
