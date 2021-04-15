@@ -8,7 +8,7 @@
 
 #import "SoqlParser.h"
 #import "Soql.h"
-#import "ZKBaseParser.h"
+#import "ZKParserFactory.h"
 
 @implementation ParserResult (Soql)
 -(PositionedString*)posString {

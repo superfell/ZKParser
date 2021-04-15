@@ -7,8 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		F412B66A2543D14D00B36A77 /* ZKBaseParser.h in Headers */ = {isa = PBXBuildFile; fileRef = F412B6692543D14D00B36A77 /* ZKBaseParser.h */; };
-		F412B66C2543D14D00B36A77 /* ZKBaseParser.m in Sources */ = {isa = PBXBuildFile; fileRef = F412B66B2543D14D00B36A77 /* ZKBaseParser.m */; };
+		F412B66A2543D14D00B36A77 /* ZKParserFactory.h in Headers */ = {isa = PBXBuildFile; fileRef = F412B6692543D14D00B36A77 /* ZKParserFactory.h */; };
+		F412B66C2543D14D00B36A77 /* ZKParserFactory.m in Sources */ = {isa = PBXBuildFile; fileRef = F412B66B2543D14D00B36A77 /* ZKParserFactory.m */; };
 		F412B67E2543DE0900B36A77 /* Tests.m in Sources */ = {isa = PBXBuildFile; fileRef = F412B67D2543DE0900B36A77 /* Tests.m */; };
 		F412B6802543DE0900B36A77 /* libZKParser.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F412B6662543D14D00B36A77 /* libZKParser.a */; };
 		F438E480261E276E0010D90E /* ZKParserInput.h in Headers */ = {isa = PBXBuildFile; fileRef = F438E47E261E276E0010D90E /* ZKParserInput.h */; };
@@ -38,8 +38,8 @@
 
 /* Begin PBXFileReference section */
 		F412B6662543D14D00B36A77 /* libZKParser.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libZKParser.a; sourceTree = BUILT_PRODUCTS_DIR; };
-		F412B6692543D14D00B36A77 /* ZKBaseParser.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ZKBaseParser.h; sourceTree = "<group>"; };
-		F412B66B2543D14D00B36A77 /* ZKBaseParser.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ZKBaseParser.m; sourceTree = "<group>"; };
+		F412B6692543D14D00B36A77 /* ZKParserFactory.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ZKParserFactory.h; sourceTree = "<group>"; };
+		F412B66B2543D14D00B36A77 /* ZKParserFactory.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ZKParserFactory.m; sourceTree = "<group>"; };
 		F412B67B2543DE0900B36A77 /* Tests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = Tests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		F412B67D2543DE0900B36A77 /* Tests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = Tests.m; sourceTree = "<group>"; };
 		F412B67F2543DE0900B36A77 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -94,8 +94,8 @@
 		F412B6682543D14D00B36A77 /* ZKParser */ = {
 			isa = PBXGroup;
 			children = (
-				F412B6692543D14D00B36A77 /* ZKBaseParser.h */,
-				F412B66B2543D14D00B36A77 /* ZKBaseParser.m */,
+				F412B6692543D14D00B36A77 /* ZKParserFactory.h */,
+				F412B66B2543D14D00B36A77 /* ZKParserFactory.m */,
 				F4C88A072628E395006D606A /* ZKParserResult.h */,
 				F4C88A082628E395006D606A /* ZKParserResult.m */,
 				F438E47E261E276E0010D90E /* ZKParserInput.h */,
@@ -126,7 +126,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F438E487261F77A70010D90E /* Soql.h in Headers */,
-				F412B66A2543D14D00B36A77 /* ZKBaseParser.h in Headers */,
+				F412B66A2543D14D00B36A77 /* ZKParserFactory.h in Headers */,
 				F438E49C2620C3F30010D90E /* SoqlParser.h in Headers */,
 				F4C88A092628E395006D606A /* ZKParserResult.h in Headers */,
 				F438E480261E276E0010D90E /* ZKParserInput.h in Headers */,
@@ -224,7 +224,7 @@
 			files = (
 				F438E481261E276E0010D90E /* ZKParserInput.m in Sources */,
 				F438E488261F77A70010D90E /* Soql.m in Sources */,
-				F412B66C2543D14D00B36A77 /* ZKBaseParser.m in Sources */,
+				F412B66C2543D14D00B36A77 /* ZKParserFactory.m in Sources */,
 				F4C88A0A2628E395006D606A /* ZKParserResult.m in Sources */,
 				F438E49D2620C3F30010D90E /* SoqlParser.m in Sources */,
 			);

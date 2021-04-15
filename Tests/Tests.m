@@ -7,7 +7,7 @@
 //
 
 #import <XCTest/XCTest.h>
-#import "ZKBaseParser.h"
+#import "ZKParserFactory.h"
 
 @interface Tests : XCTestCase
 

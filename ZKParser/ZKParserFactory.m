@@ -6,7 +6,7 @@
 //  Copyright © 2020 Simon Fell. All rights reserved.
 //
 
-#import "ZKBaseParser.h"
+#import "ZKParserFactory.h"
 
 @interface ZKSingularParser()
 @property (copy,nonatomic) ResultMapper mapper;

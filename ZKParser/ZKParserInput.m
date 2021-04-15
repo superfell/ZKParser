@@ -6,7 +6,7 @@
 //  Copyright © 2021 Simon Fell. All rights reserved.
 //
 
-#import "ZKBaseParser.h"
+#import "ZKParserFactory.h"
 
 
 @implementation NSString(ZKParsing)
