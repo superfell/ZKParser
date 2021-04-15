@@ -72,15 +72,15 @@
 
 
 @implementation ZKBaseParser
--(ParserResult *)parseImpl:(ZKParsingState*)input error:(NSError **)err {
+-(ZKParserResult *)parseImpl:(ZKParsingState*)input error:(NSError **)err {
     assert(false);
 }
 
--(ParserResult *)parse:(ZKParsingState*)input error:(NSError **)err {
+-(ZKParserResult *)parse:(ZKParsingState*)input error:(NSError **)err {
     // TODO add debug logging back in
     *err = nil;
     NSInteger start = input.pos;
-    ParserResult *r = [self parseImpl:input error:err];
+    ZKParserResult *r = [self parseImpl:input error:err];
     if (*err != nil) {
         [input moveTo:start];
     }
@@ -99,8 +99,8 @@
     self.mapper = block;
     return self;
 }
--(ParserResult *)parse:(ZKParsingState*)input error:(NSError **)err {
-    ParserResult *r = [super parse:input error:err];
+-(ZKParserResult *)parse:(ZKParsingState*)input error:(NSError **)err {
+    ZKParserResult *r = [super parse:input error:err];
     if (*err == nil && self.mapper != nil) {
         r = self.mapper(r);
     }
@@ -113,8 +113,8 @@
     self.mapper = block;
     return self;
 }
--(ParserResult *)parse:(ZKParsingState*)input error:(NSError **)err {
-    ParserResult *r = [super parse:input error:err];
+-(ZKParserResult *)parse:(ZKParsingState*)input error:(NSError **)err {
+    ZKParserResult *r = [super parse:input error:err];
     if (*err == nil && self.mapper != nil) {
         assert([r isKindOfClass:[ArrayParserResult class]]);
         r = self.mapper((ArrayParserResult*)r);
@@ -124,12 +124,12 @@
 @end
 
 @implementation ZKParserExact
--(ParserResult *)parseImpl:(ZKParsingState*)input error:(NSError **)err {
+-(ZKParserResult *)parseImpl:(ZKParsingState*)input error:(NSError **)err {
     NSInteger start = input.pos;
     NSString *res = [input consumeString:self.match caseSensitive:self.caseSensitivity];
     if (res != nil) {
         NSRange pos = NSMakeRange(start, input.pos-start);
-        return [ParserResult result:res loc:pos];
+        return [ZKParserResult result:res loc:pos];
     }
     *err = [NSError errorWithDomain:@"Parser"
                                code:2
@@ -148,7 +148,7 @@
 
 @implementation ZKParserCharSet
 
--(ParserResult *)parseImpl:(ZKParsingState*)input error:(NSError **)err {
+-(ZKParserResult *)parseImpl:(ZKParsingState*)input error:(NSError **)err {
     NSInteger count = 0;
     NSInteger start = input.pos;
     while (true) {
@@ -163,7 +163,7 @@
                 return nil;
             }
             NSRange rng = NSMakeRange(start, count);
-            return [ParserResult result:[input valueOfRange:rng] loc:rng];
+            return [ZKParserResult result:[input valueOfRange:rng] loc:rng];
         }
         count++;
     }
@@ -187,7 +187,7 @@
 
 @implementation ZKParserInteger
 
--(ParserResult *)parseImpl:(ZKParsingState*)input error:(NSError **)err {
+-(ZKParserResult *)parseImpl:(ZKParsingState*)input error:(NSError **)err {
     NSInteger start = input.pos;
     NSInteger val = 0;
     NSInteger sign = 1;
@@ -223,7 +223,7 @@
                               }];
         return nil;
     }
-    return [ParserResult result:[NSNumber numberWithInteger:val * sign] loc:NSMakeRange(start,input.pos-start)];
+    return [ZKParserResult result:[NSNumber numberWithInteger:val * sign] loc:NSMakeRange(start,input.pos-start)];
 }
 
 -(NSString *)description {
@@ -234,7 +234,7 @@
 
 @implementation ZKParserDecimal
 
--(ParserResult *)parseImpl:(ZKParsingState*)input error:(NSError **)err {
+-(ZKParserResult *)parseImpl:(ZKParsingState*)input error:(NSError **)err {
     NSInteger start = input.pos;
     BOOL first = TRUE;
     BOOL valid = FALSE;
@@ -271,7 +271,7 @@
     }
     NSRange rng = NSMakeRange(start,input.pos-start);
     NSDecimalNumber *val = [NSDecimalNumber decimalNumberWithString:[input valueOfRange:rng]];
-    return [ParserResult result:val loc:NSMakeRange(start,input.pos-start)];
+    return [ZKParserResult result:val loc:NSMakeRange(start,input.pos-start)];
 }
 
 -(NSString *)description {
@@ -289,7 +289,7 @@
     return p;
 }
 
--(ParserResult *)parseImpl:(ZKParsingState*)input error:(NSError **)err {
+-(ZKParserResult *)parseImpl:(ZKParsingState*)input error:(NSError **)err {
     NSRange match = [self.regex rangeOfFirstMatchInString:input.input options:NSMatchingAnchored range:NSMakeRange(input.pos, input.length)];
     if (NSEqualRanges(NSMakeRange(NSNotFound,0), match)) {
         *err = [NSError errorWithDomain:@"Parser"
@@ -301,7 +301,7 @@
         return nil;
     }
     input.pos += match.length;
-    return [ParserResult result:[input valueOfRange:match] loc:match];
+    return [ZKParserResult result:[input valueOfRange:match] loc:match];
 }
 
 -(NSString *)description {
@@ -317,10 +317,10 @@
     return p;
 }
 
--(ParserResult *)parseImpl:(ZKParsingState*)input error:(NSError **)err {
+-(ZKParserResult *)parseImpl:(ZKParsingState*)input error:(NSError **)err {
     NSUInteger start = input.pos;
     for (ZKBaseParser *child in self.items) {
-        ParserResult *r = [child parse:input error:err];
+        ZKParserResult *r = [child parse:input error:err];
         if (*err == nil) {
             return r;
         }
@@ -336,14 +336,14 @@
 
 @implementation ZKParserOneOf
 
--(ParserResult *)parseImpl:(ZKParsingState*)input error:(NSError **)err {
+-(ZKParserResult *)parseImpl:(ZKParsingState*)input error:(NSError **)err {
     NSUInteger start = input.pos;
     NSUInteger longestPos = start;
-    ParserResult *longestRes = nil;
+    ZKParserResult *longestRes = nil;
     NSError *childErr = nil;
     BOOL success = FALSE;
     for (ZKBaseParser *child in self.items) {
-        ParserResult *r = [child parse:input error:&childErr];
+        ZKParserResult *r = [child parse:input error:&childErr];
         if ((childErr == nil) && (input.pos > longestPos)) {
             longestRes = r;
             longestPos = input.pos;
@@ -369,11 +369,11 @@
 
 @implementation ZKParserSeq
 
--(ParserResult *)parseImpl:(ZKParsingState*)input error:(NSError **)err {
+-(ZKParserResult *)parseImpl:(ZKParsingState*)input error:(NSError **)err {
     NSUInteger start = input.pos;
     NSMutableArray *results = [NSMutableArray arrayWithCapacity:self.items.count];
     for (ZKBaseParser *child in self.items) {
-        ParserResult *res = [child parse:input error:err];
+        ZKParserResult *res = [child parse:input error:err];
         if (*err != nil) {
             return nil;
         }
@@ -399,11 +399,11 @@
     return r;
 }
 
--(ParserResult *)parseImpl:(ZKParsingState*)input error:(NSError **)err {
+-(ZKParserResult *)parseImpl:(ZKParsingState*)input error:(NSError **)err {
     NSUInteger start = input.pos;
-    NSMutableArray<ParserResult*> *results = [NSMutableArray array];
+    NSMutableArray<ZKParserResult*> *results = [NSMutableArray array];
     NSError *nextError = nil;
-    ParserResult *first = [self.parser parse:input error:&nextError];
+    ZKParserResult *first = [self.parser parse:input error:&nextError];
     if (nextError == nil) {
         [results addObject:first];
         while (results.count < self.max) {
@@ -414,7 +414,7 @@
                     break;
                 }
             }
-            ParserResult *next = [self.parser parse:input error:&nextError];
+            ZKParserResult *next = [self.parser parse:input error:&nextError];
             if (nextError != nil) {
                 // unconsume the separator above
                 [input moveTo:thisStart];
@@ -437,9 +437,9 @@
 
 @implementation ZKParserOptional
 
--(ParserResult *)parseImpl:(ZKParsingState*)input error:(NSError **)err {
+-(ZKParserResult *)parseImpl:(ZKParsingState*)input error:(NSError **)err {
     NSUInteger start = input.pos;
-    ParserResult *res = [self.optional parse:input error:err];
+    ZKParserResult *res = [self.optional parse:input error:err];
     if (*err == nil) {
         if (!self.ignoreBlock(res.val)) {
             return res;
@@ -447,7 +447,7 @@
     }
     *err = nil;
     [input moveTo:start];
-    return [ParserResult result:[NSNull null] loc:NSMakeRange(start,0)];
+    return [ZKParserResult result:[NSNull null] loc:NSMakeRange(start,0)];
 }
 
 -(NSString *)description {
@@ -458,7 +458,7 @@
 
 @implementation ZKParserRef
 
--(ParserResult *)parse:(ZKParsingState*)input error:(NSError **)err {
+-(ZKParserResult *)parse:(ZKParsingState*)input error:(NSError **)err {
     return [self.parser parse:input error:err];
 }
 
@@ -475,7 +475,7 @@
     return p;
 }
 
--(ParserResult*)parseImpl:(ZKParsingState*)i error:(NSError**)err {
+-(ZKParserResult*)parseImpl:(ZKParsingState*)i error:(NSError**)err {
     return self.parser(i,err);
 }
 
@@ -689,12 +689,12 @@
     }
 }
 
--(ParserResult *)parse:(ZKParsingState*)input error:(NSError **)err {
+-(ZKParserResult *)parse:(ZKParsingState*)input error:(NSError **)err {
     NSString *name = self.description;
     [self.state write:[NSString stringWithFormat:@"=> %@ : %@\n", name, input.value]];
     BOOL isArray = [self.inner isKindOfClass:[ZKArrayParser class]];
     if (isArray) self.state.depth++;
-    ParserResult *r = [self.inner parse:input error:err];
+    ZKParserResult *r = [self.inner parse:input error:err];
     if (isArray) self.state.depth--;
     if (*err == nil) {
         [self.state write:[NSString stringWithFormat:@"<= %@ : result %@\n", name, r]];

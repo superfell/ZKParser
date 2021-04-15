@@ -8,7 +8,7 @@
 
 #import <Foundation/Foundation.h>
 
-@class ParserResult;
+@class ZKParserResult;
 
 @interface AstNode : NSObject
 @property (assign,nonatomic) NSRange loc;
@@ -18,13 +18,13 @@
 
 @interface PositionedValue<T> : AstNode
 +(instancetype)value:(T)v loc:(NSRange)loc;
-+(instancetype)from:(ParserResult*)r;
++(instancetype)from:(ZKParserResult*)r;
 @property (strong,nonatomic) T val;
 @end
 
 @interface PositionedString : PositionedValue<NSString*>
 +(instancetype)string:(NSString *)s loc:(NSRange)loc;
-+(NSArray<PositionedString*>*)fromArray:(NSArray<ParserResult*>*)r;
++(NSArray<PositionedString*>*)fromArray:(NSArray<ZKParserResult*>*)r;
 
 @property (readonly) NSInteger length;
 @end

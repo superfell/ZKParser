@@ -9,18 +9,18 @@
 #import "ZKParserResult.h"
 
 
-@implementation ParserResult
+@implementation ZKParserResult
 +(instancetype)result:(NSObject*)val loc:(NSRange)loc {
-    ParserResult *r = [self new];
+    ZKParserResult *r = [self new];
     r.val = val;
     r.loc = loc;
     return r;
 }
 
--(BOOL)isEqual:(ParserResult*)other {
+-(BOOL)isEqual:(ZKParserResult*)other {
     return [self.val isEqual:other.val] && (self.loc.location == other.loc.location) && (self.loc.length == other.loc.length);
 }
--(NSArray<ParserResult*>*)children {
+-(NSArray<ZKParserResult*>*)children {
     assert([self.val isKindOfClass:[NSArray class]]);
     return self.val;
 }
@@ -32,7 +32,7 @@
 
 @implementation ArrayParserResult
 
-+(instancetype)result:(NSArray<ParserResult*>*)val loc:(NSRange)loc {
++(instancetype)result:(NSArray<ZKParserResult*>*)val loc:(NSRange)loc {
     ArrayParserResult *r = [ArrayParserResult new];
     r.val = val;
     r.loc = loc;
@@ -43,7 +43,7 @@
     return [self.child valueForKey:@"val"];
 }
 -(BOOL)childIsNull:(NSInteger)idx {
-    ParserResult *r = self.child[idx];
+    ZKParserResult *r = self.child[idx];
     return r.val == [NSNull null] || r.val == nil;
 }
 -(void)setVal:(id)v {
@@ -54,18 +54,18 @@
 @end
 
 ArrayResultMapper pick(NSUInteger idx) {
-    return ^ParserResult *(ArrayParserResult *r) {
+    return ^ZKParserResult *(ArrayParserResult *r) {
         return r.val[idx];
     };
 }
 
-ParserResult * pickVals(ArrayParserResult*r) {
+ZKParserResult * pickVals(ArrayParserResult*r) {
     r.val = [r childVals];
     return r;
 }
 
 ResultMapper setValue(NSObject *val) {
-    return ^ParserResult *(ParserResult *r) {
+    return ^ZKParserResult *(ZKParserResult *r) {
         r.val = val;
         return r;
     };

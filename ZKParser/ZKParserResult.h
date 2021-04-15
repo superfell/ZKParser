@@ -9,17 +9,17 @@
 #import <Foundation/Foundation.h>
 
 
-@interface ParserResult : NSObject
+@interface ZKParserResult : NSObject
 +(instancetype)result:(NSObject*)val loc:(NSRange)loc;
 
 @property (strong,nonatomic) id val;
 @property (assign,nonatomic) NSRange loc;
 @end
 
-@interface ArrayParserResult : ParserResult
-+(instancetype)result:(NSArray<ParserResult*>*)val loc:(NSRange)loc;
+@interface ArrayParserResult : ZKParserResult
++(instancetype)result:(NSArray<ZKParserResult*>*)val loc:(NSRange)loc;
 
-@property (strong,nonatomic) NSArray<ParserResult*> *child;
+@property (strong,nonatomic) NSArray<ZKParserResult*> *child;
 
 // returns the val field from each of the child results.
 -(NSArray*)childVals;
@@ -29,8 +29,8 @@
 
 @end
 
-typedef ParserResult *(^ResultMapper)(ParserResult *r);
-typedef ParserResult *(^ArrayResultMapper)(ArrayParserResult *r);
+typedef ZKParserResult *(^ResultMapper)(ZKParserResult *r);
+typedef ZKParserResult *(^ArrayResultMapper)(ArrayParserResult *r);
 
 // These are some common result Mapper's you can use to ease parser construction
 
@@ -38,7 +38,7 @@ typedef ParserResult *(^ArrayResultMapper)(ArrayParserResult *r);
 ArrayResultMapper pick(NSUInteger idx);
 
 // a mapper that will replace the child ParserResult with their value.
-ParserResult * pickVals(ArrayParserResult*r);
+ZKParserResult * pickVals(ArrayParserResult*r);
 
 // returns a mapper that will set the results value to a specific value. Useful for
 // mapping tokens to AST specific types

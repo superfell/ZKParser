@@ -9,7 +9,7 @@
 #import <Foundation/Foundation.h>
 
 @class ZKBaseParser;
-@class ParserResult;
+@class ZKParserResult;
 
 typedef enum ZKCaseSensitivity {
     CaseSensitive,
@@ -17,7 +17,7 @@ typedef enum ZKCaseSensitivity {
 } ZKCaseSensitivity;
 
 @interface NSString(ZKParsing)
--(ParserResult*)parse:(ZKBaseParser*)p error:(NSError **)err;
+-(ZKParserResult*)parse:(ZKBaseParser*)p error:(NSError **)err;
 @end
 
 @interface ZKParsingState : NSObject
@@ -39,6 +39,6 @@ typedef enum ZKCaseSensitivity {
 -(NSString*)input;
 -(NSString*)valueOfRange:(NSRange)r;
 
--(ParserResult*)parse:(ZKBaseParser*)parser error:(NSError **)err;
+-(ZKParserResult*)parse:(ZKBaseParser*)parser error:(NSError **)err;
 
 @end

@@ -11,7 +11,7 @@
 #import "ZKParserResult.h"
 
 @interface ZKBaseParser : NSObject
--(ParserResult *)parse:(ZKParsingState*)input error:(NSError **)err;
+-(ZKParserResult *)parse:(ZKParsingState*)input error:(NSError **)err;
 -(void)setDebugName:(NSString *)n;
 @end
 
@@ -34,7 +34,7 @@
 @property (strong,nonatomic) ZKBaseParser *parser;
 @end
 
-typedef ParserResult *(^ZKParseBlock)(ZKParsingState*input,NSError **err);
+typedef ZKParserResult *(^ZKParseBlock)(ZKParsingState*input,NSError **err);
 
 @interface ZKParserFactory : NSObject
 

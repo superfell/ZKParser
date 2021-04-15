@@ -43,7 +43,7 @@ void append(NSMutableString *q, NSArray *a) {
     r.loc = loc;
     return r;
 }
-+(instancetype)from:(ParserResult*)r {
++(instancetype)from:(ZKParserResult*)r {
     return [self value:r.val loc:r.loc];
 }
 @end
@@ -56,9 +56,9 @@ void append(NSMutableString *q, NSArray *a) {
     r.loc = loc;
     return r;
 }
-+(NSArray<PositionedString*>*)fromArray:(NSArray<ParserResult*>*)r {
++(NSArray<PositionedString*>*)fromArray:(NSArray<ZKParserResult*>*)r {
     NSMutableArray<PositionedString*> *out = [NSMutableArray arrayWithCapacity:r.count];
-    for (ParserResult *item in r) {
+    for (ZKParserResult *item in r) {
         [out addObject:[PositionedString from:item]];
     }
     return out;
