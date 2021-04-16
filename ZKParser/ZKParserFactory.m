@@ -85,8 +85,17 @@
     }
     return r;
 }
--(NSString *)parsersDesc:(NSArray<ZKBaseParser*>*)p {
-    return [NSString stringWithFormat:@"[%@]", [[p valueForKey:@"description"] componentsJoinedByString:@","]];
+-(NSString *)parsersDesc:(NSArray<ZKBaseParser*>*)parsers {
+    NSMutableString *s = [NSMutableString stringWithCapacity:64];
+    [s appendString:@"["];
+    NSString *sep = @"";
+    for (ZKBaseParser *p in parsers) {
+        [s appendString:sep];
+        [s appendString:p.description];
+        sep = @",";
+    }
+    [s appendString:@"]"];
+    return s;
 }
 -(void)setDebugName:(NSString *)n {
     // only does something useful in debug proxy
@@ -443,7 +452,8 @@
 }
 
 -(NSString *)description {
-    return [NSString stringWithFormat:@"[repeat{%lu,%lu} r:%@ s:%@}", self.min, self.max, self.parser, self.separator];
+    NSString *sz = self.max == NSUIntegerMax ? [NSString stringWithFormat:@"%lu+", self.min] : [NSString stringWithFormat:@"%lu-%lu", self.min, self.max];
+    return [NSString stringWithFormat:@"[%@ r:%@ s:%@]", sz, self.parser, self.separator];
 }
 @end
 
@@ -666,7 +676,6 @@
         [input markCut];
         return [ZKParserResult result:[NSNull null] loc:NSMakeRange(input.pos,0)];
     }];
-    p = [self wrapDebug:p];
     p.debugName = @"CUT";
     return p;
 }

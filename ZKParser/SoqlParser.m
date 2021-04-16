@@ -33,7 +33,7 @@
 }
 
 -(ZKSingularParser*)literalStringValue:(ZKParserFactory*)f {
-    return [f fromBlock:^ZKParserResult *(ZKParsingState *input, NSError *__autoreleasing *err) {
+    ZKSingularParser *p = [f fromBlock:^ZKParserResult *(ZKParsingState *input, NSError *__autoreleasing *err) {
         NSInteger start = input.pos;
         if ((!input.hasMoreInput) || input.currentChar != '\'') {
             *err = [NSError errorWithDomain:@"Soql"
@@ -83,6 +83,8 @@
                                          loc:overalRng];
         return [ZKParserResult result:expr loc:overalRng];
     }];
+    p.debugName = @"Literal String";
+    return p;
 }
 
 -(ZKBaseParser*)literalValue:(ZKParserFactory*)f {
