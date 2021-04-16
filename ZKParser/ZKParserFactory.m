@@ -358,7 +358,7 @@
         if (![input canMoveTo:start]) {
             // The cut point was moved past our start, we're done
             *err = childErr;
-            return nil;
+            return r;
         }
         [input moveTo:start];
     }
@@ -425,8 +425,12 @@
             ZKParserResult *next = [self.parser parse:input error:&nextError];
             if (nextError != nil) {
                 // unconsume the separator above
-                [input moveTo:thisStart];
-                break;
+                if ([input canMoveTo:thisStart]) {
+                    [input moveTo:thisStart];
+                    break;
+                }
+                *err = nextError;
+                return nil;
             }
             [results addObject:next];
         }
@@ -662,6 +666,7 @@
         [input markCut];
         return [ZKParserResult result:[NSNull null] loc:NSMakeRange(input.pos,0)];
     }];
+    p = [self wrapDebug:p];
     p.debugName = @"CUT";
     return p;
 }

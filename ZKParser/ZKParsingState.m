@@ -77,8 +77,8 @@
     self.cut = self.pos;
 }
 
--(BOOL)canMoveTo:(NSUInteger)pos {
-    return self.pos >= self.cut;
+-(BOOL)canMoveTo:(NSUInteger)targetPos {
+    return targetPos >= self.cut;
 }
 
 -(void)moveTo:(NSUInteger)pos {

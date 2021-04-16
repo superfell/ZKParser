@@ -154,7 +154,7 @@ SoqlParser *p = nil;
     [p parse:@"select id from contact where city!='o'hare'" error:&err];
     assertStringsEq(err.localizedDescription, @"Unexpected input 'hare'' at position 39");
     [p parse:@"select id from contact where city!='SF" error:&err];
-    assertStringsEq(err.localizedDescription, @"Unexpected input 'where city!='SF' at position 24");
+    assertStringsEq(err.localizedDescription, @"reached end of input while parsing a string literal, missing closing ' at 39");
 
     res = [p parse:@"select id from contact where city!=null" error:&err];
     assertStringsEq([res toSoql], @"SELECT id FROM contact WHERE city != NULL");
@@ -256,6 +256,19 @@ SoqlParser *p = nil;
     res = [p parse:@"select id from contact where ((name = 'bob' or name='alice') and city='SF')" error:&err];
     assertStringsEq([res toSoql], @"SELECT id FROM contact WHERE ((name = 'bob' OR name = 'alice') AND city = 'SF')");
     XCTAssertNil(err);
+
+    res = [p parse:@"select id from contact where name=" error:&err];
+    assertStringsEq(err.localizedDescription, @"expecting ' at position 35");
+    XCTAssertNil(res);
+
+    res = [p parse:@"select id from contact where name" error:&err];
+    assertStringsEq(err.localizedDescription, @"expecting '=' at position 34");
+    XCTAssertNil(res);
+
+    res = [p parse:@"select id from contact where name and name" error:&err];
+    assertStringsEq(err.localizedDescription, @"expecting '=' at position 35");
+    XCTAssertNil(res);
+
 }
 
 -(void)testWhereIncExcl {
@@ -269,7 +282,7 @@ SoqlParser *p = nil;
     XCTAssertNil(err);
 
     [p parse:@"select id from account where name = 'bob' AND msp__c excludes bob" error:&err];
-    assertStringsEq(err.localizedDescription, @"Unexpected input 'AND msp__c excludes bob' at position 43");
+    assertStringsEq(err.localizedDescription, @"expecting '(' at position 63");
 }
 
 -(void)testWhereInNotIn {
@@ -339,6 +352,18 @@ SoqlParser *p = nil;
     res =[p parse:@"SELECT account.name,count(id) from case  group  by account.name having count(id)>5 AND (foo>1 OR foo<-5)" error:&err];
     assertStringsEq(res.toSoql, @"SELECT account.name,count(id) FROM case GROUP BY account.name HAVING (count(id) > 5 AND (foo > 1 OR foo < -5))");
     XCTAssertNil(err);
+
+    res = [p parse:@"SELECT account.name,count(id) from case group by cube bob" error:&err];
+    assertStringsEq(err.localizedDescription, @"expecting '(' at position 55");
+    XCTAssertNil(res);
+
+    res = [p parse:@"SELECT account.name,count(id) from case group by rollup bob" error:&err];
+    assertStringsEq(err.localizedDescription, @"expecting '(' at position 57");
+    XCTAssertNil(res);
+
+    res = [p parse:@"SELECT account.name,count(id) from case group by 'bob'" error:&err];
+    assertStringsEq(err.localizedDescription, @"expecting identifier at position 50");
+    XCTAssertNil(res);
 }
 
 -(void)testOrderBy {
@@ -354,6 +379,10 @@ SoqlParser *p = nil;
     res = [p parse:@"SELECT id FROM contact ORDER BY name DESC,calendar_year(createdDate) ASC NULLS FIRST" error:&err];
     assertStringsEq([res toSoql], @"SELECT id FROM contact ORDER BY name DESC,calendar_year(createdDate) ASC NULLS FIRST");
     XCTAssertNil(err);
+
+    res = [p parse:@"select id from contact order by name desc, city nulls maybe" error:&err];
+    assertStringsEq(err.localizedDescription, @"expecting 'FIRST' at position 55");
+    XCTAssertNil(res);
 }
 
 -(void)testGroupByOrderBy {
@@ -388,9 +417,8 @@ SoqlParser *p = nil;
     assertStringsEq(res.toSoql,@"SELECT name FROM contact WHERE name > 'a' OFFSET 5");
     XCTAssertNil(err);
     
-    // TODO implement Cut() to prevent back tracking and improve error messages
     [p parse:@"select name from contact where name>'a'offset a" error:&err];
-    assertStringsEq(err.localizedDescription, @"Unexpected input 'offset a' at position 40");
+    assertStringsEq(err.localizedDescription, @"expecting an integer at position 47");
 }
 
 -(void)testForView {

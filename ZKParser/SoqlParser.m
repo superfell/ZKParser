@@ -45,6 +45,7 @@
             return nil;
         }
         input.pos++;
+        [input markCut];
         while (true) {
             if (!input.hasMoreInput) {
                 *err = [NSError errorWithDomain:@"Soql"
@@ -133,12 +134,13 @@
 
 -(ZKBaseParser*)buildParser {
     ZKParserFactory *f = [ZKParserFactory new];
-    f.debugFile = @"/Users/simon/Github/ZKParser/typeof.debug";
+    f.debugFile = @"/Users/simon/Github/ZKParser/soql.debug";
     f.defaultCaseSensitivity = CaseInsensitive;
 
     ZKBaseParser* ws = [f characters:[NSCharacterSet whitespaceAndNewlineCharacterSet] name:@"whitespace" min:1];
     ZKBaseParser* maybeWs = [f characters:[NSCharacterSet whitespaceAndNewlineCharacterSet] name:@"whitespace" min:0];
-
+    ZKBaseParser* cut = [f cut];
+    
     // constructs a seq parser for each whitespace separated token, e.g. given input "NULLS LAST" will generate
     // seq:"NULLS", ws, "LAST".
     ZKBaseParser*(^tokenSeq)(NSString *tokens) = ^ZKBaseParser*(NSString *t) {
@@ -208,10 +210,10 @@
         r.val = [NestedSelectQuery from:q];
         return r;
     }];
-    ZKBaseParser *typeOfWhen = [[f seq:@[[f eq:@"WHEN"], ws, ident, ws, [f eq:@"THEN"], ws,
+    ZKBaseParser *typeOfWhen = [[f seq:@[[f eq:@"WHEN"], cut, ws, ident, ws, [f eq:@"THEN"], ws,
                                          [f oneOrMore:fieldOnly separator:commaSep]]] onMatch:^ZKParserResult *(ZKArrayParserResult *r) {
-        PositionedString *obj = [r.child[2] posString];
-        NSArray *fields = [r.child[6].val valueForKey:@"val"];
+        PositionedString *obj = [r.child[3] posString];
+        NSArray *fields = [r.child[7].val valueForKey:@"val"];
         r.val = [TypeOfWhen sobject:obj select:fields loc:r.loc];
         return r;
     }];
@@ -275,13 +277,13 @@
         return r;
     }];
     ZKBaseParser *operatorRHS = [f oneOf:@[
-        [f seq:@[operator, maybeWs, literalValue]],
-        [f seq:@[opIncExcl, maybeWs, literalStringList]],
-        [f seq:@[opInNotIn, maybeWs, [f oneOf:@[literalStringList, nestedSelectStmt]]]]]];
+        [f seq:@[operator, cut, maybeWs, literalValue]],
+        [f seq:@[opIncExcl, cut, maybeWs, literalStringList]],
+        [f seq:@[opInNotIn, cut, maybeWs, [f oneOf:@[literalStringList, nestedSelectStmt]]]]]];
 
     ZKBaseParser *baseExpr = [[f seq:@[fieldOrFunc, maybeWs, operatorRHS]] onMatch:^ZKParserResult *(ZKArrayParserResult *r) {
         ZKArrayParserResult *opRhs = (ZKArrayParserResult*)r.child[2];
-        r.val = [ComparisonExpr left:r.child[0].val op:[opRhs.child[0] posString] right:opRhs.child[2].val loc:r.loc];
+        r.val = [ComparisonExpr left:r.child[0].val op:[opRhs.child[0] posString] right:opRhs.child[3].val loc:r.loc];
         return r;
     }];
 
@@ -305,7 +307,7 @@
         r.val = expr;
         return r;
     }];
-    ZKBaseParser *where = [f zeroOrOne:[[f seq:@[ws ,[f eq:@"WHERE"], ws, exprList]] onMatch:pick(3)]];
+    ZKBaseParser *where = [f zeroOrOne:[[f seq:@[ws ,[f eq:@"WHERE"], cut, ws, exprList]] onMatch:pick(4)]];
     
     /// FILTER SCOPE
     ZKBaseParser *filterScope = [f zeroOrOne:[[f seq:@[ws, [f eq:@"USING"], ws, [f eq:@"SCOPE"], ws, ident]] onMatch:pick(5)]];
@@ -320,37 +322,37 @@
         }
         return r;
     }];
-    ZKBaseParser *catFilter = [[f seq:@[ident, ws, [f oneOfTokens:@"AT ABOVE BELOW ABOVE_OR_BELOW"], maybeWs, catFilterVal]] onMatch:^ZKParserResult*(ZKArrayParserResult*r) {
-        r.val = [DataCategoryFilter filter:r.child[0].posString op:r.child[2].posString values:r.child[4].val loc:r.loc];
+    ZKBaseParser *catFilter = [[f seq:@[ident, ws, [f oneOfTokens:@"AT ABOVE BELOW ABOVE_OR_BELOW"], cut, maybeWs, catFilterVal]] onMatch:^ZKParserResult*(ZKArrayParserResult*r) {
+        r.val = [DataCategoryFilter filter:r.child[0].posString op:r.child[2].posString values:r.child[5].val loc:r.loc];
         return r;
     }];
-    ZKBaseParser *withDataCat = [f zeroOrOne:[[f seq:@[ws, tokenSeq(@"WITH DATA CATEGORY"), ws,
-                                                       [f oneOrMore:catFilter separator:[f seq:@[ws,[f eq:@"AND"],ws]]]]] onMatch:pick(3)]];
+    ZKBaseParser *withDataCat = [f zeroOrOne:[[f seq:@[ws, tokenSeq(@"WITH DATA CATEGORY"), cut, ws,
+                                                       [f oneOrMore:catFilter separator:[f seq:@[ws,[f eq:@"AND"],ws]]]]] onMatch:pick(4)]];
     
     /// GROUP BY
-    ZKBaseParser *groupBy = [[f seq:@[ws, tokenSeq(@"GROUP BY"), ws, [f oneOrMore:fieldOrFunc separator:commaSep]]] onMatch:^ZKParserResult *(ZKArrayParserResult *r) {
-        r.val = [GroupBy type:TGroupBy fields:[r.child[3].val valueForKey:@"val"] loc:r.loc];
+    ZKBaseParser *groupBy = [[f seq:@[ws, tokenSeq(@"GROUP BY"), cut, ws, [f oneOrMore:fieldOrFunc separator:commaSep]]] onMatch:^ZKParserResult *(ZKArrayParserResult *r) {
+        r.val = [GroupBy type:TGroupBy fields:[r.child[4].val valueForKey:@"val"] loc:r.loc];
         return r;
     }];
     ZKBaseParser *groupByFieldList = [[f seq:@[[f eq:@"("], maybeWs, [f oneOrMore:fieldOrFunc separator:commaSep], maybeWs, [f eq:@")"]]] onMatch:pick(2)];
-    ZKBaseParser *groupByRollup = [[f seq:@[ws, tokenSeq(@"GROUP BY ROLLUP"),maybeWs, groupByFieldList]] onMatch:^ZKParserResult *(ZKArrayParserResult *r) {
-        r.val = [GroupBy type:TGroupByRollup fields:[r.child[3].val valueForKey:@"val"] loc:r.loc];
+    ZKBaseParser *groupByRollup = [[f seq:@[ws, tokenSeq(@"GROUP BY ROLLUP"), cut, maybeWs, groupByFieldList]] onMatch:^ZKParserResult *(ZKArrayParserResult *r) {
+        r.val = [GroupBy type:TGroupByRollup fields:[r.child[4].val valueForKey:@"val"] loc:r.loc];
         return r;
     }];
-    ZKBaseParser *groupByCube = [[f seq:@[ws, tokenSeq(@"GROUP BY CUBE"), maybeWs, groupByFieldList]] onMatch:^ZKParserResult *(ZKArrayParserResult *r) {
-        r.val = [GroupBy type:TGroupByCube fields:[r.child[3].val valueForKey:@"val"] loc:r.loc];
+    ZKBaseParser *groupByCube = [[f seq:@[ws, tokenSeq(@"GROUP BY CUBE"), cut, maybeWs, groupByFieldList]] onMatch:^ZKParserResult *(ZKArrayParserResult *r) {
+        r.val = [GroupBy type:TGroupByCube fields:[r.child[4].val valueForKey:@"val"] loc:r.loc];
         return r;
     }];
-    ZKBaseParser *having = [f zeroOrOne:[[f seq:@[ws ,[f eq:@"HAVING"], ws, exprList]] onMatch:pick(3)]];
+    ZKBaseParser *having = [f zeroOrOne:[[f seq:@[ws ,[f eq:@"HAVING"], cut, ws, exprList]] onMatch:pick(4)]];
     ZKBaseParser *groupByClause = [f zeroOrOne:[f seq:@[[f firstOf:@[groupByRollup, groupByCube, groupBy]], having]]];
     
     /// ORDER BY
     ZKBaseParser *asc  = [[f eq:@"ASC"] onMatch:setValue(@YES)];
     ZKBaseParser *desc = [[f eq:@"DESC"] onMatch:setValue(@NO)];
     ZKBaseParser *ascDesc = [[f seq:@[ws, [f oneOf:@[asc,desc]]]] onMatch:pick(1)];
-    ZKBaseParser *nulls = [[f seq:@[ws, [f eq:@"NULLS"], ws,
+    ZKBaseParser *nulls = [[f seq:@[ws, [f eq:@"NULLS"], cut, ws,
                                 [f oneOf:@[[[f eq:@"FIRST"] onMatch:setValue(@(NullsFirst))], [[f eq:@"LAST"] onMatch:setValue(@(NullsLast))]]]]]
-                     onMatch:pick(3)];
+                     onMatch:pick(4)];
     ZKBaseParser *orderByField = [[f seq:@[fieldOrFunc, [f zeroOrOne:ascDesc], [f zeroOrOne:nulls]]] onMatch:^ZKParserResult*(ZKArrayParserResult*m) {
         BOOL asc = YES;
         NSInteger nulls = NullsDefault;
@@ -363,23 +365,23 @@
         m.val = [OrderBy field:m.child[0].val asc:asc nulls:nulls loc:m.loc];
         return m;
     }];
-    ZKBaseParser *orderByFields = [f zeroOrOne:[[f seq:@[maybeWs, [f eq:@"ORDER"], ws, [f eq:@"BY"], ws, [f oneOrMore:orderByField separator:commaSep]]] onMatch:^ZKParserResult*(ZKArrayParserResult*r) {
+    ZKBaseParser *orderByFields = [f zeroOrOne:[[f seq:@[maybeWs, [f eq:@"ORDER"], ws, [f eq:@"BY"], cut, ws, [f oneOrMore:orderByField separator:commaSep]]] onMatch:^ZKParserResult*(ZKArrayParserResult*r) {
         
         // loc for OrderBys is just the ORDER BY keyword. TODO, we probably don't want that.
-        r.val = [OrderBys by:[r.child[5].val valueForKey:@"val"] loc:NSUnionRange(r.child[1].loc, r.child[3].loc)];
+        r.val = [OrderBys by:[r.child[6].val valueForKey:@"val"] loc:NSUnionRange(r.child[1].loc, r.child[3].loc)];
         return r;
     }]];
 
-    ZKBaseParser *limit = [f zeroOrOne:[[f seq:@[maybeWs, [f eq:@"LIMIT"], maybeWs, [f integerNumber]]] onMatch:^ZKParserResult*(ZKArrayParserResult*r) {
-        r.val = [PositionedValue<NSNumber*> value:r.child[3].val loc:r.child[3].loc];
+    ZKBaseParser *limit = [f zeroOrOne:[[f seq:@[maybeWs, [f eq:@"LIMIT"], cut, maybeWs, [f integerNumber]]] onMatch:^ZKParserResult*(ZKArrayParserResult*r) {
+        r.val = [PositionedValue<NSNumber*> value:r.child[4].val loc:r.child[4].loc];
         return r;
     }]];
-    ZKBaseParser *offset= [f zeroOrOne:[[f seq:@[maybeWs, [f eq:@"OFFSET"], maybeWs, [f integerNumber]]] onMatch:^ZKParserResult*(ZKArrayParserResult*r) {
-        r.val = [PositionedValue<NSNumber*> value:r.child[3].val loc:r.child[3].loc];
+    ZKBaseParser *offset= [f zeroOrOne:[[f seq:@[maybeWs, [f eq:@"OFFSET"], cut, maybeWs, [f integerNumber]]] onMatch:^ZKParserResult*(ZKArrayParserResult*r) {
+        r.val = [PositionedValue<NSNumber*> value:r.child[4].val loc:r.child[4].loc];
         return r;
     }]];
-    ZKBaseParser *forView = [f zeroOrOne:[[f seq:@[maybeWs, [f eq:@"FOR"], ws, [f oneOfTokens:@"VIEW REFERENCE"]]] onMatch:pick(3)]];
-    ZKBaseParser *updateTracking = [f zeroOrOne:[[f seq:@[maybeWs, [f eq:@"UPDATE"], ws, [f oneOfTokens:@"TRACKING VIEWSTAT"]]] onMatch:pick(3)]];
+    ZKBaseParser *forView = [f zeroOrOne:[[f seq:@[maybeWs, [f eq:@"FOR"], cut, ws, [f oneOfTokens:@"VIEW REFERENCE"]]] onMatch:pick(4)]];
+    ZKBaseParser *updateTracking = [f zeroOrOne:[[f seq:@[maybeWs, [f eq:@"UPDATE"], cut, ws, [f oneOfTokens:@"TRACKING VIEWSTAT"]]] onMatch:pick(4)]];
 
     /// SELECT
     selectStmt.parser = [[f seq:@[maybeWs, [f eq:@"SELECT"], ws, selectExprs, ws, [f eq:@"FROM"], ws, objectRefs,
