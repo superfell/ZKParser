@@ -686,7 +686,12 @@
     }
     if (self.debug == nil) {
         self.debug = [ParserDebugState new];
+        if (![[NSFileManager defaultManager] fileExistsAtPath:self.debugFile]) {
+            [[NSFileManager defaultManager] createFileAtPath:self.debugFile contents:nil attributes:nil];
+        }
         self.debug.out = [NSFileHandle fileHandleForWritingAtPath:self.debugFile];
+        [self.debug.out seekToEndOfFile];
+        [self.debug.out writeData:[[NSString stringWithFormat:@"\nParser Debug Log %@\n", [NSDate date].description] dataUsingEncoding:NSUTF8StringEncoding]];
     }
     return [ParserDebug wrap:p state:self.debug];
 }
@@ -694,7 +699,7 @@
 
 @implementation ParserDebugState
 -(void)write:(NSString*)s {
-    [self.out writeData:[[@"" stringByPaddingToLength:self.depth * 2 withString:@" " startingAtIndex:0] dataUsingEncoding:NSUTF8StringEncoding]];
+    [self.out writeData:[[@"" stringByPaddingToLength:self.depth * 3 withString:@" " startingAtIndex:0] dataUsingEncoding:NSUTF8StringEncoding]];
     [self.out writeData:[s dataUsingEncoding:NSUTF8StringEncoding]];
 }
 @end
@@ -725,15 +730,21 @@
 
 -(ZKParserResult *)parse:(ZKParsingState*)input error:(NSError **)err {
     NSString *name = self.description;
-    [self.state write:[NSString stringWithFormat:@"=> %@ : %@\n", name, input.value]];
+    if(name.length > 80) {
+        name = [NSString stringWithFormat:@"%@...", [name substringToIndex:80]];
+    }
+    NSString *nextInput = [[[input valueOfRange:NSMakeRange(input.pos, MIN(input.length,40))]
+                           stringByReplacingOccurrencesOfString:@"\n" withString:@"\\n"]
+                           stringByReplacingOccurrencesOfString:@"\r" withString:@"\\r"];
+    [self.state write:[NSString stringWithFormat:@"=> %@ : %@\n", name, nextInput]];
     BOOL isArray = [self.inner isKindOfClass:[ZKArrayParser class]];
     if (isArray) self.state.depth++;
     ZKParserResult *r = [self.inner parse:input error:err];
     if (isArray) self.state.depth--;
     if (*err == nil) {
-        [self.state write:[NSString stringWithFormat:@"<= %@ : result %@\n", name, r]];
+        [self.state write:[NSString stringWithFormat:@"<= %@ :result: %@\n", name, r]];
     } else {
-        [self.state write:[NSString stringWithFormat:@"<= %@ : error  %@\n", name, *err]];
+        [self.state write:[NSString stringWithFormat:@"<= %@ :error : %@\n", name, (*err).localizedDescription]];
     }
     return r;
 }
