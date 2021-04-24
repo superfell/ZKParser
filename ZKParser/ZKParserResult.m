@@ -10,10 +10,11 @@
 
 
 @implementation ZKParserResult
-+(instancetype)result:(NSObject*)val loc:(NSRange)loc {
++(instancetype)result:(NSObject*)val ctx:(NSDictionary*)userContext loc:(NSRange)loc {
     ZKParserResult *r = [self new];
     r.val = val;
     r.loc = loc;
+    r.userContext = userContext;
     return r;
 }
 
@@ -32,10 +33,11 @@
 
 @implementation ZKArrayParserResult
 
-+(instancetype)result:(NSArray<ZKParserResult*>*)val loc:(NSRange)loc {
++(instancetype)result:(NSArray<ZKParserResult*>*)val ctx:(NSDictionary*)userContext loc:(NSRange)loc {
     ZKArrayParserResult *r = [ZKArrayParserResult new];
     r.val = val;
     r.loc = loc;
+    r.userContext = userContext;
     r.child = val;
     return r;
 }

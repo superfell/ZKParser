@@ -121,6 +121,7 @@
     self.mapper = block;
     return self;
 }
+
 -(ZKParserResult *)parse:(ZKParsingState*)input error:(NSError **)err {
     ZKParserResult *r = [super parse:input error:err];
     if (*err == nil && self.mapper != nil) {
@@ -137,7 +138,7 @@
     NSString *res = [input consumeString:self.match caseSensitive:self.caseSensitivity];
     if (res != nil) {
         NSRange pos = NSMakeRange(start, input.pos-start);
-        return [ZKParserResult result:res loc:pos];
+        return [ZKParserResult result:res ctx:input.userContext loc:pos];
     }
     *err = [NSError errorWithDomain:@"Parser"
                                code:2
@@ -171,7 +172,7 @@
                 return nil;
             }
             NSRange rng = NSMakeRange(start, count);
-            return [ZKParserResult result:[input valueOfRange:rng] loc:rng];
+            return [ZKParserResult result:[input valueOfRange:rng] ctx:input.userContext loc:rng];
         }
         count++;
     }
@@ -180,6 +181,15 @@
 -(NSString *)description {
     return [NSString stringWithFormat:@"[%lu+ %@]", self.minMatches, self.errorName];
 }
+
+-(instancetype)copyWithZone:(NSZone*)z {
+    ZKParserCharSet *c = [[self class] new];
+    c.charSet = self.charSet;
+    c.minMatches = self.minMatches;
+    c.errorName = self.errorName;
+    return c;
+}
+
 @end
 
 @implementation ZKParserNotCharSet
@@ -231,7 +241,7 @@
                               }];
         return nil;
     }
-    return [ZKParserResult result:[NSNumber numberWithInteger:val * sign] loc:NSMakeRange(start,input.pos-start)];
+    return [ZKParserResult result:[NSNumber numberWithInteger:val * sign] ctx:input.userContext loc:NSMakeRange(start,input.pos-start)];
 }
 
 -(NSString *)description {
@@ -279,7 +289,7 @@
     }
     NSRange rng = NSMakeRange(start,input.pos-start);
     NSDecimalNumber *val = [NSDecimalNumber decimalNumberWithString:[input valueOfRange:rng]];
-    return [ZKParserResult result:val loc:NSMakeRange(start,input.pos-start)];
+    return [ZKParserResult result:val ctx:input.userContext loc:NSMakeRange(start,input.pos-start)];
 }
 
 -(NSString *)description {
@@ -309,7 +319,7 @@
         return nil;
     }
     input.pos += match.length;
-    return [ZKParserResult result:[input valueOfRange:match] loc:match];
+    return [ZKParserResult result:[input valueOfRange:match] ctx:input.userContext loc:match];
 }
 
 -(NSString *)description {
@@ -396,7 +406,7 @@
         }
         [results addObject:res];
     }
-    return [ZKArrayParserResult result:results loc:NSMakeRange(start, input.pos-start)];
+    return [ZKArrayParserResult result:results ctx:input.userContext loc:NSMakeRange(start, input.pos-start)];
 }
 
 -(NSString*)description {
@@ -445,7 +455,7 @@
         }
     }
     if (results.count >= self.min) {
-        return [ZKArrayParserResult result:results loc:NSMakeRange(start, input.pos-start)];
+        return [ZKArrayParserResult result:results ctx:input.userContext loc:NSMakeRange(start, input.pos-start)];
     }
     *err = nextError;
     return nil;
@@ -470,7 +480,7 @@
     if ([input canMoveTo:start]) {
         *err = nil;
         [input moveTo:start];
-        return [ZKParserResult result:[NSNull null] loc:NSMakeRange(start,0)];
+        return [ZKParserResult result:[NSNull null] ctx:input.userContext loc:NSMakeRange(start,0)];
     }
     return nil;
 }
@@ -674,7 +684,7 @@
 -(ZKBaseParser*)cut {
     ZKBaseParser *p = [self fromBlock:^ZKParserResult *(ZKParsingState *input, NSError *__autoreleasing *err) {
         [input markCut];
-        return [ZKParserResult result:[NSNull null] loc:NSMakeRange(input.pos,0)];
+        return [ZKParserResult result:[NSNull null] ctx:input.userContext loc:NSMakeRange(input.pos,0)];
     }];
     p.debugName = @"CUT";
     return p;

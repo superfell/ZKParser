@@ -10,14 +10,15 @@
 
 
 @interface ZKParserResult : NSObject
-+(instancetype)result:(NSObject*)val loc:(NSRange)loc;
++(instancetype)result:(NSObject*)val ctx:(NSDictionary*)userContext loc:(NSRange)loc;
 
 @property (strong,nonatomic) id val;
 @property (assign,nonatomic) NSRange loc;
+@property (strong,nonatomic) NSDictionary *userContext;
 @end
 
 @interface ZKArrayParserResult : ZKParserResult
-+(instancetype)result:(NSArray<ZKParserResult*>*)val loc:(NSRange)loc;
++(instancetype)result:(NSArray<ZKParserResult*>*)val ctx:(NSDictionary*)userContext loc:(NSRange)loc;
 
 @property (strong,nonatomic) NSArray<ZKParserResult*> *child;
 

@@ -43,6 +43,8 @@ typedef enum ZKCaseSensitivity {
 -(NSString*)input;
 -(NSString*)valueOfRange:(NSRange)r;
 
+@property (strong,nonatomic) NSDictionary *userContext;
+
 -(ZKParserResult*)parse:(ZKBaseParser*)parser error:(NSError **)err;
 
 @end
