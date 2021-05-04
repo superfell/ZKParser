@@ -13,18 +13,9 @@
 @interface ZKBaseParser : NSObject
 -(ZKParserResult *)parse:(ZKParsingState*)input error:(NSError **)err;
 -(void)setDebugName:(NSString *)n;
-@end
-
-// All parsers that return a single item should extend this.
-@interface ZKSingularParser : ZKBaseParser
-// Sets the supplied mapper block, which will be called if the parse is successfull.
-// returns the parser to make it easer to chain onMatch calls to new parsers.
--(instancetype)onMatch:(ZKResultMapper)block;
-@end
-
-// All parsers that return an array of results should extend this.
-@interface ZKArrayParser: ZKBaseParser
--(instancetype)onMatch:(ZKResultMapper)block;
+// return true if this parser is wrapping a number of child parsers.
+// this is used to indent the debug output.
+-(BOOL)containsChildParsers;
 @end
 
 // ParserRef lets you pass a parser to another parser, and later
@@ -42,65 +33,65 @@ typedef ZKParserResult *(^ZKParseBlock)(ZKParsingState*input,NSError **err);
 @property(strong,nonatomic) NSString *debugFile;
 
 /// 1 or more whitespace characters
--(ZKSingularParser*)whitespace;
+-(ZKBaseParser*)whitespace;
 /// 0 or more whitespace characters
--(ZKSingularParser*)maybeWhitespace;
+-(ZKBaseParser*)maybeWhitespace;
 
 /// Exact match. Case sensitive set by defaultCaseSensitivity
--(ZKSingularParser*)eq:(NSString *)s;
--(ZKSingularParser*)eq:(NSString *)s case:(ZKCaseSensitivity)c;
+-(ZKBaseParser*)eq:(NSString *)s;
+-(ZKBaseParser*)eq:(NSString *)s case:(ZKCaseSensitivity)c;
 
 /// match 'min' or more consecutive characters that are in the character set.
--(ZKSingularParser*)characters:(NSCharacterSet*)set name:(NSString *)name min:(NSUInteger)minMatches;
+-(ZKBaseParser*)characters:(NSCharacterSet*)set name:(NSString *)name min:(NSUInteger)minMatches;
 
 /// match 'min' or more consecutive characters that are not in the supplied character set.
--(ZKSingularParser*)notCharacters:(NSCharacterSet*)set name:(NSString *)name min:(NSUInteger)minMatches;
+-(ZKBaseParser*)notCharacters:(NSCharacterSet*)set name:(NSString *)name min:(NSUInteger)minMatches;
 
 /// match an integer number
--(ZKSingularParser*)integerNumber;
+-(ZKBaseParser*)integerNumber;
 
 /// match a decimal number
--(ZKSingularParser*)decimalNumber;
+-(ZKBaseParser*)decimalNumber;
 
 /// match a regular expression.
--(ZKSingularParser*)regex:(NSRegularExpression*)regex name:(NSString*)name;
+-(ZKBaseParser*)regex:(NSRegularExpression*)regex name:(NSString*)name;
 
 /// match the supplied sequence of parsers.
--(ZKArrayParser*)seq:(NSArray<ZKBaseParser*>*)items;
+-(ZKBaseParser*)seq:(NSArray<ZKBaseParser*>*)items;
 
 /// tries each parser in turn, stops when there is a successful parse.
--(ZKSingularParser*)firstOf:(NSArray<ZKBaseParser*>*)items;
+-(ZKBaseParser*)firstOf:(NSArray<ZKBaseParser*>*)items;
 
 /// eq: match one of the whitespace separated tokens in this string. case sensitivity comes from defaultCaseSensitivity
--(ZKSingularParser*)oneOfTokens:(NSString *)tokens;
+-(ZKBaseParser*)oneOfTokens:(NSString *)tokens;
 
 /// eq: match one of the supplied tokens. case sensitivity comes from defaultCaseSensitivity
--(ZKSingularParser*)oneOfTokensList:(NSArray<NSString *>*)tokens;
+-(ZKBaseParser*)oneOfTokensList:(NSArray<NSString *>*)tokens;
 
 /// tries all the parsers supplied and returns the one with the longest match.
--(ZKSingularParser*)oneOf:(NSArray<ZKBaseParser*>*)items;
+-(ZKBaseParser*)oneOf:(NSArray<ZKBaseParser*>*)items;
 
 /// zero or more consecutive occurances of the parser
--(ZKArrayParser*)zeroOrMore:(ZKBaseParser*)p;
+-(ZKBaseParser*)zeroOrMore:(ZKBaseParser*)p;
 /// one or more cosecutive occurances of the parser
--(ZKArrayParser*)oneOrMore:(ZKBaseParser*)p;
+-(ZKBaseParser*)oneOrMore:(ZKBaseParser*)p;
 /// zero or more occurrances of the parer, repeated occurances separated by the supplied separater parser.
--(ZKArrayParser*)zeroOrMore:(ZKBaseParser*)p separator:(ZKBaseParser*)sep;
+-(ZKBaseParser*)zeroOrMore:(ZKBaseParser*)p separator:(ZKBaseParser*)sep;
 /// one or more occurrances of the parer, repeated occurances separated by the supplied separater parser.
--(ZKArrayParser*)oneOrMore:(ZKBaseParser*)p separator:(ZKBaseParser*)sep;
+-(ZKBaseParser*)oneOrMore:(ZKBaseParser*)p separator:(ZKBaseParser*)sep;
 /// zero to max occurrances of the parer, repeated occurances separated by the supplied separater parser.
--(ZKArrayParser*)zeroOrMore:(ZKBaseParser*)p separator:(ZKBaseParser*)sep max:(NSUInteger)maxItems;
+-(ZKBaseParser*)zeroOrMore:(ZKBaseParser*)p separator:(ZKBaseParser*)sep max:(NSUInteger)maxItems;
 /// one to max occurrances of the parer, repeated occurances separated by the supplied separater parser.
--(ZKArrayParser*)oneOrMore:(ZKBaseParser*)p separator:(ZKBaseParser*)sep max:(NSUInteger)maxItems;
+-(ZKBaseParser*)oneOrMore:(ZKBaseParser*)p separator:(ZKBaseParser*)sep max:(NSUInteger)maxItems;
 
 /// exactly zero or match instances of the supplied parser.
--(ZKSingularParser*)zeroOrOne:(ZKBaseParser*)p;
+-(ZKBaseParser*)zeroOrOne:(ZKBaseParser*)p;
 
 /// TODO
--(ZKSingularParser*)zeroOrOne:(ZKBaseParser*)p ignoring:(BOOL(^)(NSObject*))ignoreBlock;
+-(ZKBaseParser*)zeroOrOne:(ZKBaseParser*)p ignoring:(BOOL(^)(NSObject*))ignoreBlock;
 
 /// constructs a new parser instance from the parser implemention in the block.
--(ZKSingularParser*)fromBlock:(ZKParseBlock)parser;
+-(ZKBaseParser*)fromBlock:(ZKParseBlock)parser;
 
 /// Constucts a new parser that contains a reference to another parser. Can be used to
 /// refer to as yet unconstructed parsers where there are circular or recursive definitions.
@@ -113,5 +104,10 @@ typedef ZKParserResult *(^ZKParseBlock)(ZKParsingState*input,NSError **err);
 /// Adding a cut after LIMIT will prevent backtracking to before the LIMIT token and result in an error of
 /// expecting integer at ...
 -(ZKBaseParser*)cut;
+
+/// Returns a new parser that will execute the supplied parser, and if it is succesfull run the mapper on the results.
+-(ZKBaseParser*)onMatch:(ZKBaseParser*)p perform:(ZKResultMapper)mapper;
+//-(ZKBaseParser*)onError:(ZKBaseParser*)p perform:(ZKErrorMapper)mapper;
+//-(ZKBaseParser*)on:(ZKBaseParser*)p perform:(ZKParseMapper)mapper;
 
 @end

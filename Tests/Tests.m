@@ -27,7 +27,7 @@ ZKParserFactory *f = nil;
 }
 
 -(void)testExactMatch {
-    ZKBaseParser* p = [[f eq:@"Bob" case:CaseSensitive] onMatch:^ZKParserResult *(ZKParserResult *m) {
+    ZKBaseParser* p = [f onMatch:[f eq:@"Bob" case:CaseSensitive] perform:^ZKParserResult *(ZKParserResult *m) {
         XCTAssertEqualObjects(m.val, @"Bob");
         XCTAssertEqual(m.loc.location, 0);
         XCTAssertEqual(m.loc.length, 3);
@@ -80,15 +80,15 @@ ZKParserResult *r(id val, NSInteger start, NSInteger count) {
 }
 
 -(void)testOneOf {
-    ZKBaseParser* bob = [[f eq:@"Bob" case:CaseSensitive] onMatch:^ZKParserResult *(ZKParserResult *m) {
+    ZKBaseParser* bob = [f onMatch:[f eq:@"Bob" case:CaseSensitive] perform:^ZKParserResult *(ZKParserResult *m) {
         m.val = @"B";
         return m;
     }];
-    ZKBaseParser* eve = [[f eq:@"Eve" case:CaseSensitive] onMatch:^ZKParserResult *(ZKParserResult *m) {
+    ZKBaseParser* eve = [f onMatch:[f eq:@"Eve" case:CaseSensitive] perform:^ZKParserResult *(ZKParserResult *m) {
         m.val = @"E";
         return m;
     }];
-    ZKBaseParser* bobby = [[f eq:@"Bobby" case:CaseSensitive] onMatch:^ZKParserResult *(ZKParserResult *m) {
+    ZKBaseParser* bobby = [f onMatch:[f eq:@"Bobby" case:CaseSensitive] perform:^ZKParserResult *(ZKParserResult *m) {
         m.val = @"BB";
         return m;
     }];
@@ -101,15 +101,15 @@ ZKParserResult *r(id val, NSInteger start, NSInteger count) {
 }
 
 -(void)testSeq {
-    ZKBaseParser* bob = [[f eq:@"Bob" case:CaseSensitive] onMatch:^ZKParserResult *(ZKParserResult *m) {
+    ZKBaseParser* bob = [f onMatch:[f eq:@"Bob" case:CaseSensitive] perform:^ZKParserResult *(ZKParserResult *m) {
         m.val = @"B";
         return m;
     }];
-    ZKBaseParser* eve = [[f eq:@"Eve" case:CaseSensitive] onMatch:^ZKParserResult *(ZKParserResult *m) {
+    ZKBaseParser* eve = [f onMatch:[f eq:@"Eve" case:CaseSensitive] perform:^ZKParserResult *(ZKParserResult *m) {
         m.val = @"E";
         return m;
     }];
-    ZKBaseParser* bobby = [[f eq:@"Bobby" case:CaseSensitive] onMatch:^ZKParserResult *(ZKParserResult *m) {
+    ZKBaseParser* bobby = [f onMatch:[f eq:@"Bobby" case:CaseSensitive] perform:^ZKParserResult *(ZKParserResult *m) {
         m.val = @"BB";
         return m;
     }];
@@ -266,7 +266,7 @@ ZKParserResult *r(id val, NSInteger start, NSInteger count) {
 }
 
 -(void)testOneOrMore {
-    ZKBaseParser* bob = [[f eq:@"Bob" case:CaseSensitive] onMatch:^ZKParserResult *(ZKParserResult *m) {
+    ZKBaseParser* bob = [f onMatch:[f eq:@"Bob" case:CaseSensitive] perform:^ZKParserResult *(ZKParserResult *m) {
         m.val = @"B";
         return m;
     }];
@@ -337,13 +337,13 @@ ZKParserResult *r(id val, NSInteger start, NSInteger count) {
     XCTAssertEqualObjects(@"expecting an integer at position 7", err.localizedDescription);
 }
 
--(void)testArrayMapper {
-    ZKArrayParser *p = [f seq:@[[f eq:@"A"], [f eq:@"B"]]];
-    p = [p onMatch:^ZKParserResult *(ZKParserResult *r) {
+-(void)testONMatchStacking {
+    ZKBaseParser *p = [f seq:@[[f eq:@"A"], [f eq:@"B"]]];
+    p = [f onMatch:p perform:^ZKParserResult *(ZKParserResult *r) {
         r.val = @"AB";
         return r;
     }];
-    ZKArrayParser *p2 = [p onMatch:^ZKParserResult *(ZKParserResult *r) {
+    ZKBaseParser *p2 = [f onMatch:p perform:^ZKParserResult *(ZKParserResult *r) {
         r.val = [NSString stringWithFormat:@"x%@", r.val];
         return r;
     }];

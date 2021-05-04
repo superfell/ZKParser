@@ -8,24 +8,17 @@
 
 #import "ZKParserFactory.h"
 
-@interface ZKSingularParser()
+@interface ZKMatchMapperParser : ZKBaseParser
+@property (strong,nonatomic) ZKBaseParser *inner;
 @property (copy,nonatomic) ZKResultMapper mapper;
 @end
 
-@interface ZKArrayParser()
-@property (copy,nonatomic) ZKResultMapper mapper;
-@end
-
-@interface ZKNestedArrayParser : ZKArrayParser
-@property (strong,nonatomic) ZKArrayParser *inner;
-@end
-
-@interface ZKParserExact : ZKSingularParser
+@interface ZKParserExact : ZKBaseParser
 @property (strong,nonatomic) NSString *match;
 @property (assign,nonatomic) ZKCaseSensitivity caseSensitivity;
 @end
 
-@interface ZKParserCharSet : ZKSingularParser
+@interface ZKParserCharSet : ZKBaseParser
 @property (strong,nonatomic) NSCharacterSet* charSet;
 @property (assign,nonatomic) NSUInteger minMatches;
 @property (strong,nonatomic) NSString *errorName;
@@ -34,30 +27,30 @@
 @interface ZKParserNotCharSet : ZKParserCharSet
 @end
 
-@interface ZKParserInteger : ZKSingularParser
+@interface ZKParserInteger : ZKBaseParser
 @end
 
-@interface ZKParserDecimal : ZKSingularParser
+@interface ZKParserDecimal : ZKBaseParser
 @end
 
-@interface ZKParserRegex : ZKSingularParser
+@interface ZKParserRegex : ZKBaseParser
 @property (strong,nonatomic) NSRegularExpression *regex;
 @property (strong,nonatomic) NSString *name;
 @end
 
-@interface ZKParserFirstOf : ZKSingularParser
+@interface ZKParserFirstOf : ZKBaseParser
 @property (strong,nonatomic) NSArray<ZKBaseParser*>* items;
 @end
 
-@interface ZKParserOneOf : ZKSingularParser
+@interface ZKParserOneOf : ZKBaseParser
 @property (strong,nonatomic) NSArray<ZKBaseParser*>* items;
 @end
 
-@interface ZKParserSeq : ZKArrayParser
+@interface ZKParserSeq : ZKBaseParser
 @property (strong,nonatomic) NSArray<ZKBaseParser*>* items;
 @end
 
-@interface ZKParserRepeat : ZKArrayParser
+@interface ZKParserRepeat : ZKBaseParser
 +(instancetype)repeated:(ZKBaseParser*)p sep:(ZKBaseParser*)sep min:(NSUInteger)min max:(NSUInteger)max;
 @property (strong,nonatomic) ZKBaseParser *parser;
 @property (strong,nonatomic) ZKBaseParser *separator;
@@ -65,21 +58,24 @@
 @property (assign,nonatomic) NSUInteger max;
 @end
 
-@interface ZKParserOptional : ZKSingularParser
+@interface ZKParserOptional : ZKBaseParser
 @property (strong,nonatomic) ZKBaseParser *optional;
 @property (copy,nonatomic) BOOL(^ignoreBlock)(NSObject*);   // is this the right places for this? seems like it should be on eq and/or charSet
 @end
 
-@interface ZKParserBlock : ZKSingularParser
+@interface ZKParserBlock : ZKBaseParser
 @property (copy,nonatomic) ZKParseBlock parser;
 @end
 
 
 @implementation ZKBaseParser
+
 -(ZKParserResult *)parseImpl:(ZKParsingState*)input error:(NSError **)err {
     assert(false);
 }
 
+// The default impl for parse will do some common bookkeeping / behavour
+// then call parseImpl to do the actual parsing.
 -(ZKParserResult *)parse:(ZKParsingState*)input error:(NSError **)err {
     *err = nil;
     NSInteger start = input.pos;
@@ -89,6 +85,7 @@
     }
     return r;
 }
+
 -(NSString *)parsersDesc:(NSArray<ZKBaseParser*>*)parsers {
     NSMutableString *s = [NSMutableString stringWithCapacity:64];
     [s appendString:@"["];
@@ -101,59 +98,31 @@
     [s appendString:@"]"];
     return s;
 }
+
 -(void)setDebugName:(NSString *)n {
     // only does something useful in debug proxy
 }
+
+-(BOOL)containsChildParsers {
+    return NO;
+}
+
 @end
 
-@implementation ZKSingularParser
--(instancetype)onMatch:(ZKResultMapper)block {
-    self.mapper = block;
-    return self;
-}
--(ZKParserResult *)parse:(ZKParsingState*)input error:(NSError **)err {
-    ZKParserResult *r = [super parse:input error:err];
-    if (*err == nil && self.mapper != nil) {
-        r = self.mapper(r);
-    }
-    return r;
-}
-@end
+@implementation ZKMatchMapperParser
 
-@implementation ZKArrayParser
--(ZKArrayParser*)onMatch:(ZKResultMapper)block {
-    if (self.mapper == nil) {
-        self.mapper = block;
-        return self;
-    }
-    ZKNestedArrayParser *p = [ZKNestedArrayParser new];
-    p.inner = self;
-    p.mapper = block;
-    return p;
-}
-
--(ZKParserResult *)parse:(ZKParsingState*)input error:(NSError **)err {
-    ZKParserResult *r = [super parse:input error:err];
-    if (*err == nil && self.mapper != nil) {
-        assert([r isKindOfClass:[ZKParserResult class]]);
-        r = self.mapper(r);
-    }
-    return r;
-}
-@end
-
-@implementation ZKNestedArrayParser
 -(ZKParserResult *)parse:(ZKParsingState*)input error:(NSError **)err {
     ZKParserResult *r = [self.inner parse:input error:err];
-    if (*err == nil && self.mapper != nil) {
-        assert([r isKindOfClass:[ZKParserResult class]]);
+    if (*err == nil) {
         r = self.mapper(r);
     }
     return r;
 }
+
 -(NSString*)description {
     return self.inner.description;
 }
+
 @end
 
 @implementation ZKParserExact
@@ -206,6 +175,7 @@
     return [NSString stringWithFormat:@"[%lu+ %@]", self.minMatches, self.errorName];
 }
 
+// needed?
 -(instancetype)copyWithZone:(NSZone*)z {
     ZKParserCharSet *c = [[self class] new];
     c.charSet = self.charSet;
@@ -374,8 +344,13 @@
     }
     return nil;
 }
+
 -(NSString *)description {
     return [NSString stringWithFormat:@"[firstOf: %@]", [self parsersDesc:self.items]];
+}
+
+-(BOOL)containsChildParsers {
+    return YES;
 }
 
 @end
@@ -416,6 +391,10 @@
     return [NSString stringWithFormat:@"[oneOf: %@]", [self parsersDesc:self.items]];
 }
 
+-(BOOL)containsChildParsers {
+    return NO;
+}
+
 @end
 
 @implementation ZKParserSeq
@@ -435,6 +414,10 @@
 
 -(NSString*)description {
     return [NSString stringWithFormat:@"[seq: %@]", [self parsersDesc:self.items]];
+}
+
+-(BOOL)containsChildParsers {
+    return YES;
 }
 
 @end
@@ -489,6 +472,11 @@
     NSString *sz = self.max == NSUIntegerMax ? [NSString stringWithFormat:@"%lu+", self.min] : [NSString stringWithFormat:@"%lu-%lu", self.min, self.max];
     return [NSString stringWithFormat:@"[%@ r:%@ s:%@]", sz, self.parser, self.separator];
 }
+
+-(BOOL)containsChildParsers {
+    return YES;
+}
+
 @end
 
 @implementation ZKParserOptional
@@ -563,18 +551,18 @@
 
 @implementation ZKParserFactory
 
--(ZKSingularParser*)eq:(NSString *)s case:(ZKCaseSensitivity)c {
+-(ZKBaseParser*)eq:(NSString *)s case:(ZKCaseSensitivity)c {
     ZKParserExact *e = [ZKParserExact new];
     e.match = s;
     e.caseSensitivity = c;
     return [self wrapDebug:e];
 }
 
--(ZKSingularParser*)eq:(NSString *)s {
+-(ZKBaseParser*)eq:(NSString *)s {
     return [self eq:s case:self.defaultCaseSensitivity];
 }
 
--(ZKSingularParser*)whitespace {
+-(ZKBaseParser*)whitespace {
     ZKParserCharSet *w = [ZKParserCharSet new];
     w.charSet = [NSCharacterSet whitespaceCharacterSet];
     w.minMatches = 1;
@@ -582,7 +570,7 @@
     return [self wrapDebug:w];
 }
 
--(ZKSingularParser*)maybeWhitespace {
+-(ZKBaseParser*)maybeWhitespace {
     ZKParserCharSet *w = [ZKParserCharSet new];
     w.charSet = [NSCharacterSet whitespaceCharacterSet];
     w.minMatches = 0;
@@ -590,7 +578,7 @@
     return [self wrapDebug:w];
 }
 
--(ZKSingularParser*)characters:(NSCharacterSet*)set name:(NSString*)name min:(NSUInteger)minMatches {
+-(ZKBaseParser*)characters:(NSCharacterSet*)set name:(NSString*)name min:(NSUInteger)minMatches {
     ZKParserCharSet *w = [ZKParserCharSet new];
     w.charSet = set;
     w.errorName = name;
@@ -598,7 +586,7 @@
     return [self wrapDebug:w];
 }
 
--(ZKSingularParser*)notCharacters:(NSCharacterSet*)set name:(NSString *)name min:(NSUInteger)minMatches {
+-(ZKBaseParser*)notCharacters:(NSCharacterSet*)set name:(NSString *)name min:(NSUInteger)minMatches {
     ZKParserCharSet *w = [ZKParserNotCharSet new];
     w.charSet = set;
     w.errorName = name;
@@ -606,31 +594,31 @@
     return [self wrapDebug:w];
 }
 
--(ZKSingularParser*)integerNumber {
+-(ZKBaseParser*)integerNumber {
     return [self wrapDebug:[ZKParserInteger new]];
 }
 
 // match a decimal number
--(ZKSingularParser*)decimalNumber {
+-(ZKBaseParser*)decimalNumber {
     return [self wrapDebug:[ZKParserDecimal new]];
 }
 
--(ZKSingularParser*)regex:(NSRegularExpression*)regex name:(NSString*)name {
+-(ZKBaseParser*)regex:(NSRegularExpression*)regex name:(NSString*)name {
     return [self wrapDebug:[ZKParserRegex with:regex name:name]];
 }
 
--(ZKSingularParser*)firstOf:(NSArray<ZKBaseParser*>*)items {
+-(ZKBaseParser*)firstOf:(NSArray<ZKBaseParser*>*)items {
     return [self wrapDebug:[ZKParserFirstOf firstOf:items]];
 }
 
--(ZKSingularParser *)oneOfTokens:(NSString *)items {
+-(ZKBaseParser *)oneOfTokens:(NSString *)items {
     // although its called oneOf... we can use firstOf because all the tokens are unique, we sort them
     // longest to shortest so that the longest match matches first.
     NSArray *list = [items componentsSeparatedByCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
     return [self oneOfTokensList:list];
 }
 
--(ZKSingularParser*)oneOfTokensList:(NSArray<NSString *>*)list {
+-(ZKBaseParser*)oneOfTokensList:(NSArray<NSString *>*)list {
     list = [list sortedArrayUsingComparator:^NSComparisonResult(id  _Nonnull a, id  _Nonnull b) {
         NSInteger alen = [a length];
         NSInteger blen = [b length];
@@ -644,24 +632,26 @@
     // TODO, there's lots more scope to make this more efficient
     NSMutableArray<ZKBaseParser*> *parsers = [NSMutableArray arrayWithCapacity:list.count];
     for (NSString *s in list) {
-        [parsers addObject:[[self eq:s] onMatch:setValue(s)]];
+        ZKBaseParser *p = [self eq:s];
+        p = [self onMatch:p perform:setValue(s)];
+        [parsers addObject:p];
     }
     return [self wrapDebug:[self firstOf:parsers]];
 }
 
--(ZKSingularParser*)oneOf:(NSArray<ZKBaseParser*>*)items {
+-(ZKBaseParser*)oneOf:(NSArray<ZKBaseParser*>*)items {
     ZKParserOneOf *o = [ZKParserOneOf new];
     o.items = items;
     return [self wrapDebug:o];
 }
 
--(ZKArrayParser*)seq:(NSArray<ZKBaseParser*>*)items {
+-(ZKBaseParser*)seq:(NSArray<ZKBaseParser*>*)items {
     ZKParserSeq *s = [ZKParserSeq new];
     s.items = items;
     return [self wrapDebug:s];
 }
 
--(ZKSingularParser*)zeroOrOne:(ZKBaseParser*)p {
+-(ZKBaseParser*)zeroOrOne:(ZKBaseParser*)p {
     ZKParserOptional *o = [ZKParserOptional new];
     o.optional = p;
     o.ignoreBlock = ^BOOL(NSObject *v) {
@@ -670,38 +660,38 @@
     return [self wrapDebug:o];
 }
 
--(ZKSingularParser*)zeroOrOne:(ZKBaseParser*)p ignoring:(BOOL(^)(NSObject*))ignoreBlock {
+-(ZKBaseParser*)zeroOrOne:(ZKBaseParser*)p ignoring:(BOOL(^)(NSObject*))ignoreBlock {
     ZKParserOptional *o = [ZKParserOptional new];
     o.optional = p;
     o.ignoreBlock = ignoreBlock;
     return [self wrapDebug:o];
 }
 
--(ZKArrayParser*)zeroOrMore:(ZKBaseParser*)p {
+-(ZKBaseParser*)zeroOrMore:(ZKBaseParser*)p {
     return [self wrapDebug:[ZKParserRepeat repeated:p sep:NULL min:0 max:NSUIntegerMax]];
 }
 
--(ZKArrayParser*)oneOrMore:(ZKBaseParser*)p {
+-(ZKBaseParser*)oneOrMore:(ZKBaseParser*)p {
     return [self wrapDebug:[ZKParserRepeat repeated:p sep:NULL min:1 max:NSUIntegerMax]];
 }
 
--(ZKArrayParser*)zeroOrMore:(ZKBaseParser*)p separator:(ZKBaseParser*)sep {
+-(ZKBaseParser*)zeroOrMore:(ZKBaseParser*)p separator:(ZKBaseParser*)sep {
     return [self wrapDebug:[ZKParserRepeat repeated:p sep:sep min:0 max:NSUIntegerMax]];
 }
 
--(ZKArrayParser*)oneOrMore:(ZKBaseParser*)p separator:(ZKBaseParser*)sep {
+-(ZKBaseParser*)oneOrMore:(ZKBaseParser*)p separator:(ZKBaseParser*)sep {
     return [self wrapDebug:[ZKParserRepeat repeated:p sep:sep min:1 max:NSUIntegerMax]];
 }
 
--(ZKArrayParser*)zeroOrMore:(ZKBaseParser*)p separator:(ZKBaseParser*)sep max:(NSUInteger)maxItems {
+-(ZKBaseParser*)zeroOrMore:(ZKBaseParser*)p separator:(ZKBaseParser*)sep max:(NSUInteger)maxItems {
     return [self wrapDebug:[ZKParserRepeat repeated:p sep:sep min:0 max:maxItems]];
 }
 
--(ZKArrayParser*)oneOrMore:(ZKBaseParser*)p separator:(ZKBaseParser*)sep max:(NSUInteger)maxItems {
+-(ZKBaseParser*)oneOrMore:(ZKBaseParser*)p separator:(ZKBaseParser*)sep max:(NSUInteger)maxItems {
     return [self wrapDebug:[ZKParserRepeat repeated:p sep:sep min:1 max:maxItems]];
 }
 
--(ZKSingularParser*)fromBlock:(ZKParseBlock)parser {
+-(ZKBaseParser*)fromBlock:(ZKParseBlock)parser {
     return [self wrapDebug:[ZKParserBlock block:parser]];
 }
 
@@ -716,6 +706,13 @@
     }];
     p.debugName = @"CUT";
     return p;
+}
+
+-(ZKBaseParser*)onMatch:(ZKBaseParser*)p perform:(ZKResultMapper)mapper {
+    ZKMatchMapperParser *mp = [ZKMatchMapperParser new];
+    mp.inner = p;
+    mp.mapper = mapper;
+    return mp;
 }
 
 -(id)wrapDebug:(ZKBaseParser *)p {
@@ -775,7 +772,7 @@
                            stringByReplacingOccurrencesOfString:@"\n" withString:@"\\n"]
                            stringByReplacingOccurrencesOfString:@"\r" withString:@"\\r"];
     [self.state write:[NSString stringWithFormat:@"=> %@ : %@\n", name, nextInput]];
-    BOOL isArray = [self.inner isKindOfClass:[ZKArrayParser class]];
+    BOOL isArray = self.inner.containsChildParsers;
     if (isArray) self.state.depth++;
     ZKParserResult *r = [self.inner parse:input error:err];
     if (isArray) self.state.depth--;
