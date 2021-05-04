@@ -339,11 +339,11 @@ ZKParserResult *r(id val, NSInteger start, NSInteger count) {
 
 -(void)testArrayMapper {
     ZKArrayParser *p = [f seq:@[[f eq:@"A"], [f eq:@"B"]]];
-    p = [p onMatch:^ZKParserResult *(ZKArrayParserResult *r) {
+    p = [p onMatch:^ZKParserResult *(ZKParserResult *r) {
         r.val = @"AB";
         return r;
     }];
-    ZKArrayParser *p2 = [p onMatch:^ZKParserResult *(ZKArrayParserResult *r) {
+    ZKArrayParser *p2 = [p onMatch:^ZKParserResult *(ZKParserResult *r) {
         r.val = [NSString stringWithFormat:@"x%@", r.val];
         return r;
     }];

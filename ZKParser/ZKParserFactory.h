@@ -24,7 +24,7 @@
 
 // All parsers that return an array of results should extend this.
 @interface ZKArrayParser: ZKBaseParser
--(instancetype)onMatch:(ZKArrayResultMapper)block;
+-(instancetype)onMatch:(ZKResultMapper)block;
 @end
 
 // ParserRef lets you pass a parser to another parser, and later

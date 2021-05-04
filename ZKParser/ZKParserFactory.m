@@ -13,7 +13,7 @@
 @end
 
 @interface ZKArrayParser()
-@property (copy,nonatomic) ZKArrayResultMapper mapper;
+@property (copy,nonatomic) ZKResultMapper mapper;
 @end
 
 @interface ZKNestedArrayParser : ZKArrayParser
@@ -121,7 +121,7 @@
 @end
 
 @implementation ZKArrayParser
--(ZKArrayParser*)onMatch:(ZKArrayResultMapper)block {
+-(ZKArrayParser*)onMatch:(ZKResultMapper)block {
     if (self.mapper == nil) {
         self.mapper = block;
         return self;
@@ -135,8 +135,8 @@
 -(ZKParserResult *)parse:(ZKParsingState*)input error:(NSError **)err {
     ZKParserResult *r = [super parse:input error:err];
     if (*err == nil && self.mapper != nil) {
-        assert([r isKindOfClass:[ZKArrayParserResult class]]);
-        r = self.mapper((ZKArrayParserResult*)r);
+        assert([r isKindOfClass:[ZKParserResult class]]);
+        r = self.mapper(r);
     }
     return r;
 }
@@ -146,8 +146,8 @@
 -(ZKParserResult *)parse:(ZKParsingState*)input error:(NSError **)err {
     ZKParserResult *r = [self.inner parse:input error:err];
     if (*err == nil && self.mapper != nil) {
-        assert([r isKindOfClass:[ZKArrayParserResult class]]);
-        r = self.mapper((ZKArrayParserResult*)r);
+        assert([r isKindOfClass:[ZKParserResult class]]);
+        r = self.mapper(r);
     }
     return r;
 }
@@ -430,7 +430,7 @@
         }
         [results addObject:res];
     }
-    return [ZKArrayParserResult result:results ctx:input.userContext loc:NSMakeRange(start, input.pos-start)];
+    return [ZKParserResult result:results ctx:input.userContext loc:NSMakeRange(start, input.pos-start)];
 }
 
 -(NSString*)description {
@@ -479,7 +479,7 @@
         }
     }
     if (results.count >= self.min) {
-        return [ZKArrayParserResult result:results ctx:input.userContext loc:NSMakeRange(start, input.pos-start)];
+        return [ZKParserResult result:results ctx:input.userContext loc:NSMakeRange(start, input.pos-start)];
     }
     *err = nextError;
     return nil;
