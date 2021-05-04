@@ -603,6 +603,10 @@
     // although its called oneOf... we can use firstOf because all the tokens are unique, we sort them
     // longest to shortest so that the longest match matches first.
     NSArray *list = [items componentsSeparatedByCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
+    return [self oneOfTokensList:list];
+}
+
+-(ZKSingularParser*)oneOfTokensList:(NSArray<NSString *>*)list {
     list = [list sortedArrayUsingComparator:^NSComparisonResult(id  _Nonnull a, id  _Nonnull b) {
         NSInteger alen = [a length];
         NSInteger blen = [b length];

@@ -74,6 +74,9 @@ typedef ZKParserResult *(^ZKParseBlock)(ZKParsingState*input,NSError **err);
 /// eq: match one of the whitespace separated tokens in this string. case sensitivity comes from defaultCaseSensitivity
 -(ZKSingularParser*)oneOfTokens:(NSString *)tokens;
 
+/// eq: match one of the supplied tokens. case sensitivity comes from defaultCaseSensitivity
+-(ZKSingularParser*)oneOfTokensList:(NSArray<NSString *>*)tokens;
+
 /// tries all the parsers supplied and returns the one with the longest match.
 -(ZKSingularParser*)oneOf:(NSArray<ZKBaseParser*>*)items;
 
