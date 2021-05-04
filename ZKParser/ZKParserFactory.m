@@ -16,6 +16,10 @@
 @property (copy,nonatomic) ZKArrayResultMapper mapper;
 @end
 
+@interface ZKNestedArrayParser : ZKArrayParser
+@property (strong,nonatomic) ZKArrayParser *inner;
+@end
+
 @interface ZKParserExact : ZKSingularParser
 @property (strong,nonatomic) NSString *match;
 @property (assign,nonatomic) ZKCaseSensitivity caseSensitivity;
@@ -117,9 +121,15 @@
 @end
 
 @implementation ZKArrayParser
--(instancetype)onMatch:(ZKArrayResultMapper)block {
-    self.mapper = block;
-    return self;
+-(ZKArrayParser*)onMatch:(ZKArrayResultMapper)block {
+    if (self.mapper == nil) {
+        self.mapper = block;
+        return self;
+    }
+    ZKNestedArrayParser *p = [ZKNestedArrayParser new];
+    p.inner = self;
+    p.mapper = block;
+    return p;
 }
 
 -(ZKParserResult *)parse:(ZKParsingState*)input error:(NSError **)err {
@@ -129,6 +139,20 @@
         r = self.mapper((ZKArrayParserResult*)r);
     }
     return r;
+}
+@end
+
+@implementation ZKNestedArrayParser
+-(ZKParserResult *)parse:(ZKParsingState*)input error:(NSError **)err {
+    ZKParserResult *r = [self.inner parse:input error:err];
+    if (*err == nil && self.mapper != nil) {
+        assert([r isKindOfClass:[ZKArrayParserResult class]]);
+        r = self.mapper((ZKArrayParserResult*)r);
+    }
+    return r;
+}
+-(NSString*)description {
+    return self.inner.description;
 }
 @end
 

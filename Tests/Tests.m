@@ -31,7 +31,7 @@ ZKParserFactory *f = nil;
         XCTAssertEqualObjects(m.val, @"Bob");
         XCTAssertEqual(m.loc.location, 0);
         XCTAssertEqual(m.loc.length, 3);
-        return [ZKParserResult result:@"Alice" loc:m.loc];
+        return [ZKParserResult result:@"Alice" ctx:nil loc:m.loc];
     }];
     NSError *err = nil;
     ZKParserResult *r = [@"Bob" parse:p error:&err];
@@ -48,7 +48,7 @@ ZKParserFactory *f = nil;
 }
 
 ZKParserResult *r(id val, NSInteger start, NSInteger count) {
-    return [ZKParserResult result:val loc:NSMakeRange(start, count)];
+    return [ZKParserResult result:val ctx:nil loc:NSMakeRange(start, count)];
 }
 
 -(void)testCaseInsensitiveMatch {
@@ -337,4 +337,23 @@ ZKParserResult *r(id val, NSInteger start, NSInteger count) {
     XCTAssertEqualObjects(@"expecting an integer at position 7", err.localizedDescription);
 }
 
+-(void)testArrayMapper {
+    ZKArrayParser *p = [f seq:@[[f eq:@"A"], [f eq:@"B"]]];
+    p = [p onMatch:^ZKParserResult *(ZKArrayParserResult *r) {
+        r.val = @"AB";
+        return r;
+    }];
+    ZKArrayParser *p2 = [p onMatch:^ZKParserResult *(ZKArrayParserResult *r) {
+        r.val = [NSString stringWithFormat:@"x%@", r.val];
+        return r;
+    }];
+    NSError *err = nil;
+    ZKParserResult *r = [@"AB" parse:p error:&err];
+    XCTAssertNil(err);
+    XCTAssertEqualObjects(@"AB", r.val);
+    r = [@"AB" parse:p2 error:&err];
+    XCTAssertNil(err);
+    XCTAssertEqualObjects(@"xAB", r.val);
+    XCTAssertFalse(p == p2);
+}
 @end
