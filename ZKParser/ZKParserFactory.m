@@ -65,7 +65,6 @@
 
 @interface ZKParserOptional : ZKBaseParser
 @property (strong,nonatomic) ZKBaseParser *optional;
-@property (copy,nonatomic) BOOL(^ignoreBlock)(NSObject*);   // is this the right places for this? seems like it should be on eq and/or charSet
 @end
 
 @interface ZKParserBlock : ZKBaseParser
@@ -501,9 +500,7 @@
     NSUInteger start = input.pos;
     ZKParserResult *res = [self.optional parse:input error:err];
     if (*err == nil) {
-        if (!self.ignoreBlock(res.val)) {
-            return res;
-        }
+        return res;
     }
     if ([input canMoveTo:start]) {
         *err = nil;
@@ -670,16 +667,6 @@
 -(ZKBaseParser*)zeroOrOne:(ZKBaseParser*)p {
     ZKParserOptional *o = [ZKParserOptional new];
     o.optional = p;
-    o.ignoreBlock = ^BOOL(NSObject *v) {
-        return NO;
-    };
-    return [self wrapDebug:o];
-}
-
--(ZKBaseParser*)zeroOrOne:(ZKBaseParser*)p ignoring:(BOOL(^)(NSObject*))ignoreBlock {
-    ZKParserOptional *o = [ZKParserOptional new];
-    o.optional = p;
-    o.ignoreBlock = ignoreBlock;
     return [self wrapDebug:o];
 }
 

@@ -89,9 +89,6 @@ typedef ZKParserResult *(^ZKParseBlock)(ZKParsingState*input,NSError **err);
 /// exactly zero or one matches of the supplied parser.
 -(ZKBaseParser*)zeroOrOne:(ZKBaseParser*)p;
 
-/// TODO
--(ZKBaseParser*)zeroOrOne:(ZKBaseParser*)p ignoring:(BOOL(^)(NSObject*))ignoreBlock;
-
 /// constructs a new parser instance from the parser implemention in the block.
 -(ZKBaseParser*)fromBlock:(ZKParseBlock)parser;
 
