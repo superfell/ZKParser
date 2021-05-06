@@ -337,7 +337,7 @@ ZKParserResult *r(id val, NSInteger start, NSInteger count) {
     XCTAssertEqualObjects(@"expecting an integer at position 7", err.localizedDescription);
 }
 
--(void)testONMatchStacking {
+-(void)testOnMatchStacking {
     ZKBaseParser *p = [f seq:@[[f eq:@"A"], [f eq:@"B"]]];
     p = [f onMatch:p perform:^ZKParserResult *(ZKParserResult *r) {
         r.val = @"AB";
@@ -356,4 +356,15 @@ ZKParserResult *r(id val, NSInteger start, NSInteger count) {
     XCTAssertEqualObjects(@"xAB", r.val);
     XCTAssertFalse(p == p2);
 }
+
+-(void)testOnError {
+    ZKBaseParser *p = [f eq:@"Bob"];
+    p = [f onError:p perform:^(NSError *__autoreleasing *err) {
+        *err = [NSError errorWithDomain:@"test" code:42 userInfo:nil];
+    }];
+    NSError *err = nil;
+    [@"Alice" parse:p error:&err];
+    XCTAssertEqualObjects(@"test", err.domain);
+}
+
 @end

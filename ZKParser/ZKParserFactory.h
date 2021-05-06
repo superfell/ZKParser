@@ -12,6 +12,7 @@
 
 @interface ZKBaseParser : NSObject
 -(ZKParserResult *)parse:(ZKParsingState*)input error:(NSError **)err;
+
 -(void)setDebugName:(NSString *)n;
 // return true if this parser is wrapping a number of child parsers.
 // this is used to indent the debug output.
@@ -39,6 +40,7 @@ typedef ZKParserResult *(^ZKParseBlock)(ZKParsingState*input,NSError **err);
 
 /// Exact match. Case sensitive set by defaultCaseSensitivity
 -(ZKBaseParser*)eq:(NSString *)s;
+/// Exact match with explictly set case sensitivity
 -(ZKBaseParser*)eq:(NSString *)s case:(ZKCaseSensitivity)c;
 
 /// match 'min' or more consecutive characters that are in the character set.
@@ -84,7 +86,7 @@ typedef ZKParserResult *(^ZKParseBlock)(ZKParsingState*input,NSError **err);
 /// one to max occurrances of the parer, repeated occurances separated by the supplied separater parser.
 -(ZKBaseParser*)oneOrMore:(ZKBaseParser*)p separator:(ZKBaseParser*)sep max:(NSUInteger)maxItems;
 
-/// exactly zero or match instances of the supplied parser.
+/// exactly zero or one matches of the supplied parser.
 -(ZKBaseParser*)zeroOrOne:(ZKBaseParser*)p;
 
 /// TODO
@@ -107,7 +109,7 @@ typedef ZKParserResult *(^ZKParseBlock)(ZKParsingState*input,NSError **err);
 
 /// Returns a new parser that will execute the supplied parser, and if it is succesfull run the mapper on the results.
 -(ZKBaseParser*)onMatch:(ZKBaseParser*)p perform:(ZKResultMapper)mapper;
-//-(ZKBaseParser*)onError:(ZKBaseParser*)p perform:(ZKErrorMapper)mapper;
-//-(ZKBaseParser*)on:(ZKBaseParser*)p perform:(ZKParseMapper)mapper;
+/// Returns a new parser that will execute the supplied parser, and if it is returns an error run the mapper on the error.
+-(ZKBaseParser*)onError:(ZKBaseParser*)p perform:(ZKErrorMapper)mapper;
 
 @end

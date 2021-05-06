@@ -13,6 +13,11 @@
 @property (copy,nonatomic) ZKResultMapper mapper;
 @end
 
+@interface ZKErrorMapperParser : ZKBaseParser
+@property (strong,nonatomic) ZKBaseParser *inner;
+@property (copy,nonatomic) ZKErrorMapper mapper;
+@end
+
 @interface ZKParserExact : ZKBaseParser
 @property (strong,nonatomic) NSString *match;
 @property (assign,nonatomic) ZKCaseSensitivity caseSensitivity;
@@ -118,9 +123,29 @@
     }
     return r;
 }
-
+-(BOOL)containsChildParsers {
+    return TRUE;
+}
 -(NSString*)description {
-    return self.inner.description;
+    return [NSString stringWithFormat:@"[onMatch:%@]", self.inner.description];
+}
+
+@end
+
+@implementation ZKErrorMapperParser
+
+-(ZKParserResult *)parse:(ZKParsingState*)input error:(NSError **)err {
+    ZKParserResult *r = [self.inner parse:input error:err];
+    if (*err != nil) {
+        self.mapper(err);
+    }
+    return r;
+}
+-(BOOL)containsChildParsers {
+    return TRUE;
+}
+-(NSString*)description {
+    return [NSString stringWithFormat:@"[onError:%@]", self.inner.description];
 }
 
 @end
@@ -173,15 +198,6 @@
 
 -(NSString *)description {
     return [NSString stringWithFormat:@"[%lu+ %@]", self.minMatches, self.errorName];
-}
-
-// needed?
--(instancetype)copyWithZone:(NSZone*)z {
-    ZKParserCharSet *c = [[self class] new];
-    c.charSet = self.charSet;
-    c.minMatches = self.minMatches;
-    c.errorName = self.errorName;
-    return c;
 }
 
 @end
@@ -712,7 +728,14 @@
     ZKMatchMapperParser *mp = [ZKMatchMapperParser new];
     mp.inner = p;
     mp.mapper = mapper;
-    return mp;
+    return [self wrapDebug:mp];
+}
+
+-(ZKBaseParser*)onError:(ZKBaseParser*)p perform:(ZKErrorMapper)mapper {
+    ZKErrorMapperParser *mp = [ZKErrorMapperParser new];
+    mp.inner = p;
+    mp.mapper = mapper;
+    return [self wrapDebug:mp];
 }
 
 -(id)wrapDebug:(ZKBaseParser *)p {
