@@ -34,7 +34,7 @@
 @end
 
 typedef ZKParserResult *(^ZKResultMapper)(ZKParserResult *r);
-typedef void(^ZKErrorMapper)(NSError **);
+typedef void(^ZKErrorMapper)(NSDictionary*, NSError **);
 
 // These are some common result Mapper's you can use to ease parser construction
 

@@ -11,10 +11,10 @@
 @class ZKBaseParser;
 @class ZKParserResult;
 
-typedef enum ZKCaseSensitivity {
-    CaseSensitive,
-    CaseInsensitive,
-} ZKCaseSensitivity;
+typedef NS_ENUM(uint8_t, ZKCaseSensitivity) {
+    ZKCaseSensitive,
+    ZKCaseInsensitive,
+};
 
 @interface NSString(ZKParsing)
 -(ZKParserResult*)parse:(ZKBaseParser*)p error:(NSError **)err;

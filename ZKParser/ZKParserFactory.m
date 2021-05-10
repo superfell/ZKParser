@@ -136,7 +136,7 @@
 -(ZKParserResult *)parse:(ZKParsingState*)input error:(NSError **)err {
     ZKParserResult *r = [self.inner parse:input error:err];
     if (*err != nil) {
-        self.mapper(err);
+        self.mapper(input.userContext, err);
     }
     return r;
 }

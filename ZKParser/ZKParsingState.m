@@ -52,7 +52,7 @@
 }
 
 -(NSString *)consumeString:(NSString *)s caseSensitive:(ZKCaseSensitivity)cs {
-    NSStringCompareOptions opt = cs == CaseSensitive ? NSLiteralSearch : NSCaseInsensitiveSearch;
+    NSStringCompareOptions opt = cs == ZKCaseSensitive ? NSLiteralSearch : NSCaseInsensitiveSearch;
     NSRange rng = NSMakeRange(self.pos, s.length);
     if (self.length >= s.length && [self.input compare:s options:opt range:rng] == NSOrderedSame) {
         self.pos += s.length;

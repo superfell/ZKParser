@@ -27,7 +27,7 @@ ZKParserFactory *f = nil;
 }
 
 -(void)testExactMatch {
-    ZKBaseParser* p = [f onMatch:[f eq:@"Bob" case:CaseSensitive] perform:^ZKParserResult *(ZKParserResult *m) {
+    ZKBaseParser* p = [f onMatch:[f eq:@"Bob" case:ZKCaseSensitive] perform:^ZKParserResult *(ZKParserResult *m) {
         XCTAssertEqualObjects(m.val, @"Bob");
         XCTAssertEqual(m.loc.location, 0);
         XCTAssertEqual(m.loc.length, 3);
@@ -52,7 +52,7 @@ ZKParserResult *r(id val, NSInteger start, NSInteger count) {
 }
 
 -(void)testCaseInsensitiveMatch {
-    ZKBaseParser* p = [f eq:@"alice" case:CaseInsensitive];
+    ZKBaseParser* p = [f eq:@"alice" case:ZKCaseInsensitive];
     NSError *err = nil;
     XCTAssertEqualObjects(r(@"ALICE",0,5), [@"ALICE" parse:p error:&err]);
     XCTAssertNil(err);    
@@ -68,7 +68,7 @@ ZKParserResult *r(id val, NSInteger start, NSInteger count) {
     XCTAssertEqualObjects(r(@"bob",0,3), [@"bob" parse:p error:&err]);
     XCTAssertNil([@"boB" parse:p error:&err]);
     XCTAssertEqualObjects(@"expecting 'bob' at position 1", err.localizedDescription);
-    f.defaultCaseSensitivity = CaseInsensitive;
+    f.defaultCaseSensitivity = ZKCaseInsensitive;
     ZKBaseParser* i = [f eq:@"bob"];
     XCTAssertEqualObjects(r(@"bob",0,3), [@"bob" parse:i error:&err]);
     XCTAssertEqualObjects(r(@"Bob",0,3), [@"Bob" parse:i error:&err]);
@@ -80,15 +80,15 @@ ZKParserResult *r(id val, NSInteger start, NSInteger count) {
 }
 
 -(void)testOneOf {
-    ZKBaseParser* bob = [f onMatch:[f eq:@"Bob" case:CaseSensitive] perform:^ZKParserResult *(ZKParserResult *m) {
+    ZKBaseParser* bob = [f onMatch:[f eq:@"Bob" case:ZKCaseSensitive] perform:^ZKParserResult *(ZKParserResult *m) {
         m.val = @"B";
         return m;
     }];
-    ZKBaseParser* eve = [f onMatch:[f eq:@"Eve" case:CaseSensitive] perform:^ZKParserResult *(ZKParserResult *m) {
+    ZKBaseParser* eve = [f onMatch:[f eq:@"Eve" case:ZKCaseSensitive] perform:^ZKParserResult *(ZKParserResult *m) {
         m.val = @"E";
         return m;
     }];
-    ZKBaseParser* bobby = [f onMatch:[f eq:@"Bobby" case:CaseSensitive] perform:^ZKParserResult *(ZKParserResult *m) {
+    ZKBaseParser* bobby = [f onMatch:[f eq:@"Bobby" case:ZKCaseSensitive] perform:^ZKParserResult *(ZKParserResult *m) {
         m.val = @"BB";
         return m;
     }];
@@ -101,15 +101,15 @@ ZKParserResult *r(id val, NSInteger start, NSInteger count) {
 }
 
 -(void)testSeq {
-    ZKBaseParser* bob = [f onMatch:[f eq:@"Bob" case:CaseSensitive] perform:^ZKParserResult *(ZKParserResult *m) {
+    ZKBaseParser* bob = [f onMatch:[f eq:@"Bob" case:ZKCaseSensitive] perform:^ZKParserResult *(ZKParserResult *m) {
         m.val = @"B";
         return m;
     }];
-    ZKBaseParser* eve = [f onMatch:[f eq:@"Eve" case:CaseSensitive] perform:^ZKParserResult *(ZKParserResult *m) {
+    ZKBaseParser* eve = [f onMatch:[f eq:@"Eve" case:ZKCaseSensitive] perform:^ZKParserResult *(ZKParserResult *m) {
         m.val = @"E";
         return m;
     }];
-    ZKBaseParser* bobby = [f onMatch:[f eq:@"Bobby" case:CaseSensitive] perform:^ZKParserResult *(ZKParserResult *m) {
+    ZKBaseParser* bobby = [f onMatch:[f eq:@"Bobby" case:ZKCaseSensitive] perform:^ZKParserResult *(ZKParserResult *m) {
         m.val = @"BB";
         return m;
     }];
@@ -266,7 +266,7 @@ ZKParserResult *r(id val, NSInteger start, NSInteger count) {
 }
 
 -(void)testOneOrMore {
-    ZKBaseParser* bob = [f onMatch:[f eq:@"Bob" case:CaseSensitive] perform:^ZKParserResult *(ZKParserResult *m) {
+    ZKBaseParser* bob = [f onMatch:[f eq:@"Bob" case:ZKCaseSensitive] perform:^ZKParserResult *(ZKParserResult *m) {
         m.val = @"B";
         return m;
     }];
@@ -359,7 +359,7 @@ ZKParserResult *r(id val, NSInteger start, NSInteger count) {
 
 -(void)testOnError {
     ZKBaseParser *p = [f eq:@"Bob"];
-    p = [f onError:p perform:^(NSError *__autoreleasing *err) {
+    p = [f onError:p perform:^(NSDictionary*ctx, NSError *__autoreleasing *err) {
         *err = [NSError errorWithDomain:@"test" code:42 userInfo:nil];
     }];
     NSError *err = nil;
