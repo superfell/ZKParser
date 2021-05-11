@@ -64,17 +64,21 @@
     }
     return nil;
 }
-
--(BOOL)consumeCharacterSet:(NSCharacterSet *)s {
-    if (self.length == 0) {
-        return NO;
+-(NSInteger)consumeCharacterSet:(NSCharacterSet *)cs {
+    NSInteger count = 0;
+    unichar buff[16];
+    while (self.hasMoreInput) {
+        NSRange chunk = NSMakeRange(self.pos, MIN(16, self.length));
+        [self.input getCharacters:buff range:chunk];
+        for (int i = 0; i < chunk.length; i++) {
+            if (![cs characterIsMember:buff[i]]) {
+                return count;
+            }
+            self.pos++;
+            count++;
+        }
     }
-    unichar c = [self.input characterAtIndex:self.pos];
-    if ([s characterIsMember:c]) {
-        self.pos += 1;
-        return YES;
-    }
-    return NO;
+    return count;
 }
 
 -(void)markCut {

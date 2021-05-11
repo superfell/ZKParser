@@ -35,7 +35,7 @@ typedef NS_ENUM(uint8_t, ZKCaseSensitivity) {
 -(unichar)currentChar;  // asserts if no more input.
 
 -(NSString *)consumeString:(NSString *)s caseSensitive:(ZKCaseSensitivity)cs;
--(BOOL)consumeCharacterSet:(NSCharacterSet *)s;
+-(NSInteger)consumeCharacterSet:(NSCharacterSet *)s;
 
 -(void)markCut;
 -(BOOL)canMoveTo:(NSUInteger)pos;

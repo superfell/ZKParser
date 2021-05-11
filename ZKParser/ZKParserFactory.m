@@ -170,19 +170,14 @@
 @implementation ZKParserCharSet
 
 -(ZKParserResult *)parseImpl:(ZKParsingState*)input {
-    NSInteger count = 0;
     NSInteger start = input.pos;
-    while (true) {
-        if (![input consumeCharacterSet:self.charSet]) {
-            if (count < self.minMatches) {
-                [input expectedClass:self.errorName].pos = start;
-                return nil;
-            }
-            NSRange rng = NSMakeRange(start, count);
-            return [ZKParserResult result:[input valueOfRange:rng] ctx:input.userContext loc:rng];
-        }
-        count++;
+    NSInteger count = [input consumeCharacterSet:self.charSet];
+    if (count < self.minMatches) {
+        [input expectedClass:self.errorName].pos = start;
+        return nil;
     }
+    NSRange rng = NSMakeRange(start, count);
+    return [ZKParserResult result:[input valueOfRange:rng] ctx:input.userContext loc:rng];
 }
 
 -(NSString *)description {
@@ -593,13 +588,13 @@
 }
 
 -(ZKBaseParser *)oneOfTokens:(NSString *)items {
-    // although its called oneOf... we can use firstOf because all the tokens are unique, we sort them
-    // longest to shortest so that the longest match matches first.
     NSArray *list = [items componentsSeparatedByCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
     return [self oneOfTokensList:list];
 }
 
 -(ZKBaseParser*)oneOfTokensList:(NSArray<NSString *>*)list {
+    // although its called oneOf... we can use firstOf because all the tokens are unique, we sort them
+    // longest to shortest so that the longest match matches first.
     list = [list sortedArrayUsingComparator:^NSComparisonResult(id  _Nonnull a, id  _Nonnull b) {
         NSInteger alen = [a length];
         NSInteger blen = [b length];
