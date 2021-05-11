@@ -34,9 +34,9 @@ ZKParserFactory *f = nil;
         return [ZKParserResult result:@"Alice" ctx:nil loc:m.loc];
     }];
     NSError *err = nil;
-    ZKParserResult *r = [@"Bob" parse:p error:&err];
+    NSString *r = [@"Bob" parse:p error:&err];
     XCTAssertNil(err);
-    XCTAssertEqualObjects(r.val,  @"Alice");
+    XCTAssertEqualObjects(r,  @"Alice");
     XCTAssertNil([@"Eve" parse:p error:&err]);
     XCTAssertEqualObjects(@"expecting 'Bob' at position 1", err.localizedDescription);
     XCTAssertNil([@"Bo"  parse:p error:&err]);
@@ -54,27 +54,29 @@ ZKParserResult *r(id val, NSInteger start, NSInteger count) {
 -(void)testCaseInsensitiveMatch {
     ZKBaseParser* p = [f eq:@"alice" case:ZKCaseInsensitive];
     NSError *err = nil;
-    XCTAssertEqualObjects(r(@"ALICE",0,5), [@"ALICE" parse:p error:&err]);
+    XCTAssertEqualObjects(@"ALICE", [@"ALICE" parse:p error:&err]);
     XCTAssertNil(err);    
-    XCTAssertEqualObjects(r(@"alice",0,5), [@"alice"  parse:p error:&err]);
+    XCTAssertEqualObjects(@"alice", [@"alice"  parse:p error:&err]);
     XCTAssertNil(err);
-    XCTAssertEqualObjects(r(@"ALice",0,5), [@"ALice" parse:p error:&err]);
+    XCTAssertEqualObjects(@"ALice", [@"ALice" parse:p error:&err]);
     XCTAssertNil(err);
+    XCTAssertNil([@"alicy" parse:p error:&err]);
+    XCTAssertEqualObjects(@"expecting 'alice' at position 1", err.localizedDescription);
 }
 
 -(void)testDefaultCaseSensitivity {
     ZKBaseParser* p = [f eq:@"bob"];
     NSError *err = nil;
-    XCTAssertEqualObjects(r(@"bob",0,3), [@"bob" parse:p error:&err]);
+    XCTAssertEqualObjects(@"bob", [@"bob" parse:p error:&err]);
     XCTAssertNil([@"boB" parse:p error:&err]);
     XCTAssertEqualObjects(@"expecting 'bob' at position 1", err.localizedDescription);
     f.defaultCaseSensitivity = ZKCaseInsensitive;
     ZKBaseParser* i = [f eq:@"bob"];
-    XCTAssertEqualObjects(r(@"bob",0,3), [@"bob" parse:i error:&err]);
-    XCTAssertEqualObjects(r(@"Bob",0,3), [@"Bob" parse:i error:&err]);
-    XCTAssertEqualObjects(r(@"BOB",0,3), [@"BOB" parse:i error:&err]);
+    XCTAssertEqualObjects(@"bob", [@"bob" parse:i error:&err]);
+    XCTAssertEqualObjects(@"Bob", [@"Bob" parse:i error:&err]);
+    XCTAssertEqualObjects(@"BOB", [@"BOB" parse:i error:&err]);
     // p shouldn't be affected by change
-    XCTAssertEqualObjects(r(@"bob",0,3), [@"bob" parse:p error:&err]);
+    XCTAssertEqualObjects(@"bob", [@"bob" parse:p error:&err]);
     XCTAssertNil([@"boB" parse:p error:&err]);
     XCTAssertEqualObjects(@"expecting 'bob' at position 1", err.localizedDescription);
 }
@@ -94,10 +96,10 @@ ZKParserResult *r(id val, NSInteger start, NSInteger count) {
     }];
     ZKBaseParser* p = [f oneOf:@[bobby,bob,eve]];
     NSError *err = nil;
-    XCTAssertEqualObjects(@"B", [@"Bob"  parse:p error:&err].val);
-    XCTAssertEqualObjects(@"E", [@"Eve"  parse:p error:&err].val);
-    XCTAssertEqualObjects(@"BB", [@"Bobby"  parse:p error:&err].val);
-    XCTAssertNil([@"Alice" parse:p error:&err].val);
+    XCTAssertEqualObjects(@"B", [@"Bob"  parse:p error:&err]);
+    XCTAssertEqualObjects(@"E", [@"Eve"  parse:p error:&err]);
+    XCTAssertEqualObjects(@"BB", [@"Bobby"  parse:p error:&err]);
+    XCTAssertNil([@"Alice" parse:p error:&err]);
 }
 
 -(void)testSeq {
@@ -116,7 +118,7 @@ ZKParserResult *r(id val, NSInteger start, NSInteger count) {
     ZKBaseParser* p = [f seq:@[bob,eve,bobby]];
     NSObject *exp = @[r(@"B",0,3),r(@"E",3,3),r(@"BB",6,5)];
     NSError *err = nil;
-    XCTAssertEqualObjects(exp, [@"BobEveBobby" parse:p error:&err].val);
+    XCTAssertEqualObjects(exp, [@"BobEveBobby" parse:p error:&err]);
     XCTAssertNil(err);
     
     XCTAssertNil([@"BobEveBobbx" parse:p error:&err]);
@@ -129,117 +131,115 @@ ZKParserResult *r(id val, NSInteger start, NSInteger count) {
 -(void)testWhitespace {
     ZKBaseParser* ws = [f whitespace];
     ZKParsingState *i = [ZKParsingState withInput:@" Hello"];
-    NSError *err = nil;
-    [ws parse:i error:&err];
+    ZKParserResult *r = [ws parse:i];
     XCTAssertEqualObjects(@"Hello", i.value);
-    XCTAssertNil(err);
+    XCTAssertEqualObjects(@" ", r.val);
+    XCTAssertFalse(i.hasError);
 
     i = [ZKParsingState withInput:@" \t Hello"];
-    [ws parse:i error:&err];
+    r = [ws parse:i];
     XCTAssertEqualObjects(@"Hello", i.value);
-    XCTAssertNil(err);
+    XCTAssertEqualObjects(@" \t ", r.val);
+    XCTAssertFalse(i.hasError);
 
     i = [ZKParsingState withInput:@"Hello"];
-    [ws parse:i error:&err];
+    r = [ws parse:i];
     XCTAssertEqual(5, i.length);
-    XCTAssertEqualObjects(@"expecting whitespace at position 1", err.localizedDescription);
+    XCTAssertEqualObjects(@"expecting whitespace at position 1", i.error.msg);
+    XCTAssertTrue(i.hasError);
 }
 
 -(void)testCharacterSet {
     ZKBaseParser* p = [f characters:[NSCharacterSet characterSetWithCharactersInString:@"ABC"] name:@"Id" min:3];
-    NSError *err = nil;
     ZKParsingState *i = [ZKParsingState withInput:@"AAAABC"];
-    NSObject *res = [p parse:i error:&err];
+    ZKParserResult *res = [p parse:i];
     XCTAssertEqualObjects(r(@"AAAABC",0,6), res);
 
     i = [ZKParsingState withInput:@"AAA"];
-    res = [p parse:i error:&err];
+    res = [p parse:i];
     XCTAssertEqualObjects(r(@"AAA",0,3), res);
 
     i = [ZKParsingState withInput:@"AA"];
-    res = [p parse:i error:&err];
+    res = [p parse:i];
     XCTAssertNil(res);
-    XCTAssertEqualObjects(@"expecting Id at position 1", err.localizedDescription);
+    XCTAssertEqualObjects(@"expecting Id at position 1", i.error.msg);
     XCTAssertEqual(2, i.length);
 }
 
 -(void)testInteger {
     NSError *err = nil;
     ZKBaseParser *p = [f integerNumber];
-    ZKParserResult *r = [@"123" parse:p error:&err];
-    XCTAssertEqualObjects(@(123), r.val);
-    XCTAssertEqual(0, r.loc.location);
-    XCTAssertEqual(3, r.loc.length);
+    NSNumber *r = [@"123" parse:p error:&err];
+    XCTAssertEqualObjects(@(123), r);
     
     r = [@"9" parse:p error:&err];
-    XCTAssertEqualObjects(@(9), r.val);
+    XCTAssertEqualObjects(@(9), r);
     r = [@"+321" parse:p error:&err];
-    XCTAssertEqualObjects(@(321), r.val);
+    XCTAssertEqualObjects(@(321), r);
     r = [@"-321" parse:p error:&err];
-    XCTAssertEqualObjects(@(-321), r.val);
+    XCTAssertEqualObjects(@(-321), r);
     ZKParsingState *i = [ZKParsingState withInput:@"-321bob"];
-    r = [p parse:i error:&err];
-    XCTAssertEqualObjects(@(-321), r.val);
+    ZKParserResult *pr = [p parse:i];
+    XCTAssertEqualObjects(@(-321), pr.val);
     XCTAssertEqual(4, i.pos);
     
     [@"" parse:p error:&err];
-    XCTAssertEqualObjects(@"expecting an integer at position 1", err.localizedDescription);
+    XCTAssertEqualObjects(@"expecting integer at position 1", err.localizedDescription);
     [@"++1" parse:p error:&err];
-    XCTAssertEqualObjects(@"expecting an integer at position 1", err.localizedDescription);
+    XCTAssertEqualObjects(@"expecting integer at position 1", err.localizedDescription);
     [@"x" parse:p error:&err];
-    XCTAssertEqualObjects(@"expecting an integer at position 1", err.localizedDescription);
+    XCTAssertEqualObjects(@"expecting integer at position 1", err.localizedDescription);
     [@"+a" parse:p error:&err];
-    XCTAssertEqualObjects(@"expecting an integer at position 1", err.localizedDescription);
+    XCTAssertEqualObjects(@"expecting integer at position 1", err.localizedDescription);
     [@"+a" parse:p error:&err];
-    XCTAssertEqualObjects(@"expecting an integer at position 1", err.localizedDescription);
+    XCTAssertEqualObjects(@"expecting integer at position 1", err.localizedDescription);
 }
 
 -(void)testDecimal {
     NSError *err = nil;
     ZKBaseParser *p = [f decimalNumber];
     ZKParserResult *r = [@"123" parse:p error:&err];
-    XCTAssertEqualObjects(@(123), r.val);
-    XCTAssertEqual(0, r.loc.location);
-    XCTAssertEqual(3, r.loc.length);
+    XCTAssertEqualObjects(@(123), r);
+    XCTAssertNil(err);
     
     NSDecimalNumber*(^dec)(NSString*) = ^NSDecimalNumber*(NSString*v) {
         return [NSDecimalNumber decimalNumberWithString:v];
     };
     r = [@"9" parse:p error:&err];
-    XCTAssertEqualObjects(@(9), r.val);
+    XCTAssertEqualObjects(@(9), r);
     r = [@"+321" parse:p error:&err];
-    XCTAssertEqualObjects(@(321), r.val);
+    XCTAssertEqualObjects(@(321), r);
     r = [@"-321" parse:p error:&err];
-    XCTAssertEqualObjects(@(-321), r.val);
+    XCTAssertEqualObjects(@(-321), r);
     r = [@"-321.1234" parse:p error:&err];
-    XCTAssertEqualObjects(dec(@"-321.1234"), r.val);
+    XCTAssertEqualObjects(dec(@"-321.1234"), r);
     r = [@"321.1234" parse:p error:&err];
-    XCTAssertEqualObjects(dec(@"321.1234"), r.val);
+    XCTAssertEqualObjects(dec(@"321.1234"), r);
     r = [@".1234" parse:p error:&err];
-    XCTAssertEqualObjects(dec(@".1234"), r.val);
+    XCTAssertEqualObjects(dec(@".1234"), r);
     r = [@"-.1234" parse:p error:&err];
-    XCTAssertEqualObjects(dec(@"-0.1234"), r.val);
+    XCTAssertEqualObjects(dec(@"-0.1234"), r);
     r = [@"+.1234" parse:p error:&err];
-    XCTAssertEqualObjects(dec(@"0.1234"), r.val);
+    XCTAssertEqualObjects(dec(@"0.1234"), r);
     ZKParsingState *i = [ZKParsingState withInput:@"-321bob"];
-    r = [p parse:i error:&err];
+    r = [p parse:i];
     XCTAssertEqualObjects(@(-321), r.val);
     XCTAssertEqual(4, i.pos);
     
     [@"" parse:p error:&err];
-    XCTAssertEqualObjects(@"expecting a decimal at position 1", err.localizedDescription);
+    XCTAssertEqualObjects(@"expecting decimal at position 1", err.localizedDescription);
     [@"++1" parse:p error:&err];
-    XCTAssertEqualObjects(@"expecting a decimal at position 1", err.localizedDescription);
+    XCTAssertEqualObjects(@"expecting decimal at position 1", err.localizedDescription);
     [@"x" parse:p error:&err];
-    XCTAssertEqualObjects(@"expecting a decimal at position 1", err.localizedDescription);
+    XCTAssertEqualObjects(@"expecting decimal at position 1", err.localizedDescription);
     [@"+a" parse:p error:&err];
-    XCTAssertEqualObjects(@"expecting a decimal at position 1", err.localizedDescription);
+    XCTAssertEqualObjects(@"expecting decimal at position 1", err.localizedDescription);
     [@"+a" parse:p error:&err];
-    XCTAssertEqualObjects(@"expecting a decimal at position 1", err.localizedDescription);
+    XCTAssertEqualObjects(@"expecting decimal at position 1", err.localizedDescription);
     [@"+10." parse:p error:&err];
-    XCTAssertEqualObjects(@"expecting a decimal at position 1", err.localizedDescription);
+    XCTAssertEqualObjects(@"expecting decimal at position 1", err.localizedDescription);
     [@"." parse:p error:&err];
-    XCTAssertEqualObjects(@"expecting a decimal at position 1", err.localizedDescription);
+    XCTAssertEqualObjects(@"expecting decimal at position 1", err.localizedDescription);
 }
 
 -(void)testRegex {
@@ -250,19 +250,19 @@ ZKParserResult *r(id val, NSInteger start, NSInteger count) {
     XCTAssertNil(err);
     ZKBaseParser *p = [f regex:re name:@"number"];
     ZKParsingState *i = [ZKParsingState withInput:@"ABC20-30DEF"];
-    [p parse:i error:&err];
-    XCTAssertEqualObjects(@"expecting a number at position 1", err.localizedDescription);
+    [p parse:i];
+    XCTAssertEqualObjects(@"expecting number at position 1", i.error.msg);
     i.pos = 3; // something else consumed ABC;
-    ZKParserResult *r = [p parse:i error:&err];
+    ZKParserResult *r = [p parse:i];
     XCTAssertNil(err);
     XCTAssertEqualObjects(@"20-30", r.val);
     XCTAssertTrue(NSEqualRanges(NSMakeRange(3,5), r.loc));
     XCTAssertEqualObjects(@"DEF", i.value);
     
     i.pos = 4;
-    r = [p parse:i error:&err];
+    r = [p parse:i];
     XCTAssertNil(r);
-    XCTAssertEqualObjects(@"expecting a number at position 5", err.localizedDescription);
+    XCTAssertEqualObjects(@"expecting number at position 5", i.error.msg);
 }
 
 -(void)testOneOrMore {
@@ -273,17 +273,17 @@ ZKParserResult *r(id val, NSInteger start, NSInteger count) {
     ZKBaseParser* bobs = [f oneOrMore:bob];
     NSObject *exp = @[r(@"B",0,3),r(@"B",3,3),r(@"B",6,3)];
     NSError *err = nil;
-    XCTAssertEqualObjects(exp, [bobs parse:[ZKParsingState withInput:@"BobBobBob"] error:&err].val);
+    XCTAssertEqualObjects(exp, [bobs parse:[ZKParsingState withInput:@"BobBobBob"]].val);
     XCTAssertNil(err);
     
     bobs = [f oneOrMore:bob separator:[f eq:@","]];
-    XCTAssertEqualObjects(@[r(@"B",0,3)], [@"Bob" parse:bobs error:&err].val);
+    XCTAssertEqualObjects(@[r(@"B",0,3)], [@"Bob" parse:bobs error:&err]);
     XCTAssertNil(err);
-    XCTAssertEqualObjects((@[r(@"B",0,3),r(@"B",4,3)]), [@"Bob,Bob" parse:bobs error:&err].val);
+    XCTAssertEqualObjects((@[r(@"B",0,3),r(@"B",4,3)]), [@"Bob,Bob" parse:bobs error:&err]);
     XCTAssertNil(err);
     XCTAssertNil([@"Bob,Bob," parse:bobs error:&err]);
     XCTAssertEqualObjects(@"Unexpected input ',' at position 8", err.localizedDescription);
-    XCTAssertEqualObjects((@[r(@"B",0,3),r(@"B",4,3),r(@"B",8,3)]), [@"Bob,Bob,Bob" parse:bobs error:&err].val);
+    XCTAssertEqualObjects((@[r(@"B",0,3),r(@"B",4,3),r(@"B",8,3)]), [@"Bob,Bob,Bob" parse:bobs error:&err]);
     XCTAssertNil(err);
 }
 
@@ -291,16 +291,16 @@ ZKParserResult *r(id val, NSInteger start, NSInteger count) {
     ZKBaseParser* bob = [f eq:@"Bob"];
     ZKBaseParser* maybeBobs = [f zeroOrMore:bob];
     NSError *err = nil;
-    ZKParserResult *pr = [@"Bob" parse:maybeBobs error:&err];
-    XCTAssertEqualObjects(r(@[r(@"Bob",0,3)],0,3), pr);
+    id pr = [@"Bob" parse:maybeBobs error:&err];
+    XCTAssertEqualObjects(@[r(@"Bob",0,3)], pr);
     XCTAssertNil(err);
 
     pr = [@"" parse:maybeBobs error:&err];
-    XCTAssertEqualObjects(r(@[],0,0), pr);
+    XCTAssertEqualObjects(@[], pr);
     XCTAssertNil(err);
 
     pr = [@"BobBob" parse:maybeBobs error:&err];
-    XCTAssertEqualObjects(r(@[r(@"Bob",0,3),r(@"Bob",3,3)],0,6), pr);
+    XCTAssertEqualObjects((@[r(@"Bob",0,3),r(@"Bob",3,3)]), pr);
     XCTAssertNil(err);
     
     ZKBaseParser* alice = [f eq:@"Alice"];
@@ -311,14 +311,14 @@ ZKParserResult *r(id val, NSInteger start, NSInteger count) {
 
     pr = [@"Alice " parse:aliceAndMaybeBobs error:&err];
     XCTAssertNil(err);
-    XCTAssertEqualObjects(r(@[r(@"Alice",0,5),r(@" ",5,1), r(@[],6,0)],0,6), pr);
+    XCTAssertEqualObjects((@[r(@"Alice",0,5),r(@" ",5,1), r(@[],6,0)]), pr);
 
     pr = [@"Alice Bob" parse:aliceAndMaybeBobs error:&err];
-    XCTAssertEqualObjects(r(@[r(@"Alice",0,5),r(@" ",5,1), r(@[r(@"Bob",6,3)],6,3)],0,9), pr);
+    XCTAssertEqualObjects((@[r(@"Alice",0,5),r(@" ",5,1), r(@[r(@"Bob",6,3)],6,3)]), pr);
     XCTAssertNil(err);
 
     pr = [@"Alice BobBob" parse:aliceAndMaybeBobs error:&err];
-    XCTAssertEqualObjects(r(@[r(@"Alice",0,5),r(@" ",5,1), r(@[r(@"Bob",6,3),r(@"Bob",9,3)],6,6)],0,12), pr);
+    XCTAssertEqualObjects((@[r(@"Alice",0,5),r(@" ",5,1), r(@[r(@"Bob",6,3),r(@"Bob",9,3)],6,6)]), pr);
     XCTAssertNil(err);
 }
 
@@ -334,7 +334,7 @@ ZKParserResult *r(id val, NSInteger start, NSInteger count) {
     p = [f zeroOrOne:p1];
     err = nil;
     [@"LIMIT bob" parse:p error:&err];
-    XCTAssertEqualObjects(@"expecting an integer at position 7", err.localizedDescription);
+    XCTAssertEqualObjects(@"expecting integer at position 7", err.localizedDescription);
 }
 
 -(void)testOnMatchStacking {
@@ -348,23 +348,23 @@ ZKParserResult *r(id val, NSInteger start, NSInteger count) {
         return r;
     }];
     NSError *err = nil;
-    ZKParserResult *r = [@"AB" parse:p error:&err];
+    NSString *r = [@"AB" parse:p error:&err];
     XCTAssertNil(err);
-    XCTAssertEqualObjects(@"AB", r.val);
+    XCTAssertEqualObjects(@"AB", r);
     r = [@"AB" parse:p2 error:&err];
     XCTAssertNil(err);
-    XCTAssertEqualObjects(@"xAB", r.val);
+    XCTAssertEqualObjects(@"xAB", r);
     XCTAssertFalse(p == p2);
 }
 
 -(void)testOnError {
     ZKBaseParser *p = [f eq:@"Bob"];
-    p = [f onError:p perform:^(NSDictionary*ctx, NSError *__autoreleasing *err) {
-        *err = [NSError errorWithDomain:@"test" code:42 userInfo:nil];
+    p = [f onError:p perform:^(ZKParsingState *s) {
+        [s error:@"test"];
     }];
     NSError *err = nil;
     [@"Alice" parse:p error:&err];
-    XCTAssertEqualObjects(@"test", err.domain);
+    XCTAssertEqualObjects(@"test", err.localizedDescription);
 }
 
 @end

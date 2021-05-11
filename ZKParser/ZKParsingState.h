@@ -10,6 +10,7 @@
 
 @class ZKBaseParser;
 @class ZKParserResult;
+@class ZKParserError;
 
 typedef NS_ENUM(uint8_t, ZKCaseSensitivity) {
     ZKCaseSensitive,
@@ -17,7 +18,7 @@ typedef NS_ENUM(uint8_t, ZKCaseSensitivity) {
 };
 
 @interface NSString(ZKParsing)
--(ZKParserResult*)parse:(ZKBaseParser*)p error:(NSError **)err;
+-(id)parse:(ZKBaseParser*)parser error:(NSError**)err;
 @end
 
 @interface ZKParsingState : NSObject
@@ -45,6 +46,35 @@ typedef NS_ENUM(uint8_t, ZKCaseSensitivity) {
 
 @property (strong,nonatomic) NSDictionary *userContext;
 
--(ZKParserResult*)parse:(ZKBaseParser*)parser error:(NSError **)err;
+// errors
+@property (readonly,nonatomic) ZKParserError *error;
+@property (readonly,nonatomic) BOOL hasError;
 
+// A lot of parser errors are of the form "expected 'A' at position 3".
+// As there's a lot of errors thrown away due to backtracking/branching
+// we want indicating an error to be cheap. Calling expected will
+// lazyly generate the error message when needed. This can result in
+// unused/thrown away errors not costing any allocations at all. This is
+// the preferred way to indicate a parser error.
+-(ZKParserError*)expected:(NSString*)expected;
+// This is similar to expected, expect the expected thing is a class or
+// type of value, e.g. whitespace, rather than a specific character sequence.
+// This results in the expected item in the generated message to not be quoted.
+-(ZKParserError*)expectedClass:(NSString*)expected;
+// Flag a parser error with an explict message.
+-(ZKParserError*)error:(NSString*)msg;
+// Clear the error state.
+-(void)clearError;
+
+-(id)parse:(ZKBaseParser*)parser error:(NSError**)err;
+
+@end
+
+@interface ZKParserError : NSObject
+@property (assign,nonatomic) NSInteger code;
+@property (strong,nonatomic) NSString *msg;
+@property (assign,nonatomic) NSUInteger pos;
+@property (strong,nonatomic) NSMutableDictionary *userInfo;
+@property (strong,nonatomic) NSString *expected;
+@property (assign,nonatomic) BOOL expectedClass;
 @end

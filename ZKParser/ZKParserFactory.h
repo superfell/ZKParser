@@ -11,7 +11,7 @@
 #import "ZKParserResult.h"
 
 @interface ZKBaseParser : NSObject
--(ZKParserResult *)parse:(ZKParsingState*)input error:(NSError **)err;
+-(ZKParserResult*)parse:(ZKParsingState*)input;
 
 -(void)setDebugName:(NSString *)n;
 // return true if this parser is wrapping a number of child parsers.
@@ -26,7 +26,7 @@
 @property (strong,nonatomic) ZKBaseParser *parser;
 @end
 
-typedef ZKParserResult *(^ZKParseBlock)(ZKParsingState*input,NSError **err);
+typedef ZKParserResult *(^ZKParseBlock)(ZKParsingState*input);
 
 @interface ZKParserFactory : NSObject
 

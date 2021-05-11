@@ -11,7 +11,7 @@
 
 @implementation NSString(ZKParsing)
 
--(NSObject*)parse:(ZKBaseParser*)p error:(NSError **)err {
+-(id)parse:(ZKBaseParser*)p error:(NSError**)err{
     return [[ZKParsingState withInput:self] parse:p error:err];
 }
 
@@ -19,6 +19,9 @@
 
 @interface ZKParsingState()
 @property (strong,nonatomic) NSString *input;
+@property (strong,nonatomic) ZKParserError *error;
+@property (assign,nonatomic) BOOL hasError;
+
 @end
 
 @implementation ZKParsingState
@@ -27,6 +30,7 @@
     ZKParsingState *r = [[ZKParsingState alloc] init];
     r.input = s;
     r.pos = 0;
+    r.error = [ZKParserError new];
     return r;
 }
 
@@ -85,15 +89,80 @@
     self.pos = pos;
 }
 
--(NSObject *)parse:(ZKBaseParser*)p error:(NSError **)err {
+-(id)parse:(ZKBaseParser*)p error:(NSError**)err {
     *err = nil;
-    NSObject *res = [p parse:self error:err];
-    if (self.length > 0 && *err == nil) {
-        NSString *msg = [NSString stringWithFormat:@"Unexpected input '%@' at position %lu", self.value, (unsigned long)self.pos+1];
-        *err = [NSError errorWithDomain:@"Parser" code:-1 userInfo:@{NSLocalizedDescriptionKey:msg, @"Position":@(self.pos+1)}];
+    ZKParserResult *res = [p parse:self];
+    if (self.length > 0 && !self.hasError) {
+        *err = [NSError errorWithDomain:@"Parser" code:1 userInfo:@{
+            NSLocalizedDescriptionKey: [NSString stringWithFormat:@"Unexpected input '%@' at position %lu", self.value, (unsigned long)self.pos+1],
+            @"Position": @(self.pos+1)
+        }];
         return nil;
     }
-    return res;
+    if (self.hasError) {
+        NSMutableDictionary *userInfo = [NSMutableDictionary dictionary];
+        userInfo[NSLocalizedDescriptionKey] = self.error.msg;
+        userInfo[@"Position"] = @(self.error.pos+1);
+        if (self.error.userInfo != nil) {
+            [userInfo addEntriesFromDictionary:self.error.userInfo];
+        }
+        *err = [NSError errorWithDomain:@"Parser" code:2 userInfo:userInfo];
+        return nil;
+    }
+    return res.val;
 }
 
+-(ZKParserError*)expectedClass:(NSString*)expected {
+    self.hasError = TRUE;
+    ZKParserError *e = self.error;
+    e.msg = nil;
+    e.pos = self.pos;
+    e.code = 0;
+    e.userInfo = nil;
+    e.expected = expected;
+    e.expectedClass = TRUE;
+    return e;
+}
+-(ZKParserError*)expected:(NSString*)expected {
+    self.hasError = TRUE;
+    ZKParserError *e = self.error;
+    e.msg = nil;
+    e.pos = self.pos;
+    e.code = 0;
+    e.userInfo = nil;
+    e.expected = expected;
+    e.expectedClass = FALSE;
+    return e;
+}
+
+-(ZKParserError*)error:(NSString*)msg {
+    self.hasError = TRUE;
+    ZKParserError *e = self.error;
+    e.msg = msg;
+    e.pos = self.pos;
+    e.code = 0;
+    e.userInfo = nil;
+    e.expected = nil;
+    e.expectedClass = FALSE;
+    return e;
+}
+
+-(void)clearError {
+    self.hasError = FALSE;
+}
+
+@end
+
+@implementation ZKParserError
+-(NSString*)msg {
+    if (_msg == nil && _expected != nil) {
+        // pos is zero based internally, but 1 based to the user.
+        if (self.expectedClass) {
+            _msg = [NSString stringWithFormat:@"expecting %@ at position %lu", _expected, _pos + 1];
+        } else {
+            _msg = [NSString stringWithFormat:@"expecting '%@' at position %lu", _expected, _pos + 1];
+        }
+    }
+    return _msg;
+}
 @end
