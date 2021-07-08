@@ -396,6 +396,7 @@ ZKParserResult *r(id val, NSInteger start, NSInteger count) {
     err = nil;
     [@"LIMIT bob" parse:p error:&err];
     XCTAssertEqualObjects(@"expecting integer at position 7", err.localizedDescription);
+    
     ZKBaseParser *alt = [f eq:@"LIMI"];
     ZKBaseParser *one = [f oneOf:@[pcut,alt]];
     [@"LIMIT bob" parse:one error:&err];
@@ -433,4 +434,45 @@ ZKParserResult *r(id val, NSInteger start, NSInteger count) {
 }
 
 -(void)testParserRef {
+    ZKParserRef *parens = [f parserRef];
+    ZKBaseParser *op = [f oneOfTokens:@"* /"];
+    ZKBaseParser *pn = [f firstOf:@[[f decimalNumber], parens]];
+    ZKBaseParser *expr = [f seq:@[pn, [f zeroOrMore:[f seq:@[f.maybeWhitespace, op, f.maybeWhitespace, pn]]]]];
+    ZKResultMapper eval = ^ZKParserResult *(ZKParserResult *r) {
+        NSDecimalNumber *x = [[r child:0] val];
+        for (ZKParserResult *cr in [[r child:1] val]) {
+            NSDecimalNumber *right = [[cr child:3] val];
+            if ([[[cr child:1] val] isEqualTo:@"*"] ) {
+                x = [x decimalNumberByMultiplyingBy:right];
+            } else {
+                x = [x decimalNumberByDividingBy:right];
+            }
+        }
+        r.val = x;
+        return r;
+    };
+    expr = [f onMatch:expr perform:eval];
+    parens.parser = [f onMatch:[f seq:@[[f eq:@"("], f.maybeWhitespace, expr, f.maybeWhitespace, [f eq:@")"]]] perform:pick(2)];
+    [parens setDebugName:@"parens"];
+    NSError *err = nil;
+    XCTAssertEqualObjects(@12, [@"12" parse:expr error:&err]);
+    XCTAssertNil(err.localizedDescription);
+    XCTAssertEqualObjects(@4, [@"2 *2" parse:expr error:&err]);
+    XCTAssertNil(err.localizedDescription);
+    XCTAssertEqualObjects(@12, [@"2 * 2 * 3" parse:expr error:&err]);
+    XCTAssertNil(err.localizedDescription);
+    XCTAssertEqualObjects(@3, [@"12 / 2 / 2" parse:expr error:&err]);
+    XCTAssertNil(err.localizedDescription);
+    XCTAssertEqualObjects(@6, [@"4 * 3 / 2" parse:expr error:&err]);
+    XCTAssertNil(err.localizedDescription);
+    XCTAssertEqualObjects(@12, [@"12 / (2 / 2)" parse:expr error:&err]);
+    XCTAssertNil(err.localizedDescription);
+    XCTAssertEqualObjects(@3, [@"(12 / (2 * 2))" parse:expr error:&err]);
+    XCTAssertNil(err.localizedDescription);
+    XCTAssertEqualObjects(@3, [@"(12 / ((2 * 2)))" parse:expr error:&err]);
+    XCTAssertNil(err.localizedDescription);
+    XCTAssertEqualObjects(@48, [@"( 12 /2 ) * (16/2)" parse:expr error:&err]);
+    XCTAssertNil(err.localizedDescription);
+}
+
 @end
