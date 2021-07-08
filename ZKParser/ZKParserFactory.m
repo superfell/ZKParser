@@ -540,6 +540,23 @@
 
 @implementation ZKParserFactory
 
+-(instancetype)init {
+    self = [super init];
+
+    ZKParserCharSet *w = [ZKParserCharSet new];
+    w.charSet = [NSCharacterSet whitespaceCharacterSet];
+    w.minMatches = 1;
+    w.errorName = @"whitespace";
+    self.whitespace = [self wrapDebug:w];
+
+    w = [ZKParserCharSet new];
+    w.charSet = [NSCharacterSet whitespaceCharacterSet];
+    w.minMatches = 0;
+    w.errorName = @"whitespace";
+    self.maybeWhitespace = [self wrapDebug:w];
+    return self;
+}
+
 -(ZKBaseParser*)eq:(NSString *)s case:(ZKCaseSensitivity)c {
     ZKParserExact *e = [ZKParserExact new];
     e.match = s;
@@ -549,22 +566,6 @@
 
 -(ZKBaseParser*)eq:(NSString *)s {
     return [self eq:s case:self.defaultCaseSensitivity];
-}
-
--(ZKBaseParser*)whitespace {
-    ZKParserCharSet *w = [ZKParserCharSet new];
-    w.charSet = [NSCharacterSet whitespaceCharacterSet];
-    w.minMatches = 1;
-    w.errorName = @"whitespace";
-    return [self wrapDebug:w];
-}
-
--(ZKBaseParser*)maybeWhitespace {
-    ZKParserCharSet *w = [ZKParserCharSet new];
-    w.charSet = [NSCharacterSet whitespaceCharacterSet];
-    w.minMatches = 0;
-    w.errorName = @"whitespace";
-    return [self wrapDebug:w];
 }
 
 -(ZKBaseParser*)characters:(NSCharacterSet*)set name:(NSString*)name min:(NSUInteger)minMatches {

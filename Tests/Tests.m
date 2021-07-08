@@ -391,10 +391,14 @@ ZKParserResult *r(id val, NSInteger start, NSInteger count) {
     [@"LIMIT bob" parse:p error:&err];
     XCTAssertEqualObjects(@"Unexpected input 'LIMIT bob' at position 1", err.localizedDescription);
 
-    p1 = [f seq:@[[f eq:@"LIMIT"], [f cut], [f whitespace], [f integerNumber]]];
-    p = [f zeroOrOne:p1];
+    ZKBaseParser *pcut = [f seq:@[[f eq:@"LIMIT"], [f cut], [f whitespace], [f integerNumber]]];
+    p = [f zeroOrOne:pcut];
     err = nil;
     [@"LIMIT bob" parse:p error:&err];
+    XCTAssertEqualObjects(@"expecting integer at position 7", err.localizedDescription);
+    ZKBaseParser *alt = [f eq:@"LIMI"];
+    ZKBaseParser *one = [f oneOf:@[pcut,alt]];
+    [@"LIMIT bob" parse:one error:&err];
     XCTAssertEqualObjects(@"expecting integer at position 7", err.localizedDescription);
 }
 
@@ -428,4 +432,5 @@ ZKParserResult *r(id val, NSInteger start, NSInteger count) {
     XCTAssertEqualObjects(@"test", err.localizedDescription);
 }
 
+-(void)testParserRef {
 @end

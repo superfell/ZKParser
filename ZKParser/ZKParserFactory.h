@@ -49,9 +49,9 @@ typedef ZKParserResult *(^ZKParseBlock)(ZKParsingState*input);
 @property(strong,nonatomic) NSString *debugFile;
 
 /// 1 or more whitespace characters
--(ZKBaseParser*)whitespace;
+@property (strong,nonatomic) ZKBaseParser *whitespace;
 /// 0 or more whitespace characters
--(ZKBaseParser*)maybeWhitespace;
+@property (strong,nonatomic) ZKBaseParser *maybeWhitespace;
 
 /// Exact match. Case sensitive set by defaultCaseSensitivity
 -(ZKBaseParser*)eq:(NSString *)s;
