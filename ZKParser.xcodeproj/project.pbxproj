@@ -36,6 +36,7 @@
 		F412B67B2543DE0900B36A77 /* Tests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = Tests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		F412B67D2543DE0900B36A77 /* Tests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = Tests.m; sourceTree = "<group>"; };
 		F412B67F2543DE0900B36A77 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		F41EA2502696A97700CB1F90 /* ZKParser.podspec.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = ZKParser.podspec.json; sourceTree = "<group>"; };
 		F438E47E261E276E0010D90E /* ZKParsingState.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ZKParsingState.h; sourceTree = "<group>"; };
 		F438E47F261E276E0010D90E /* ZKParsingState.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ZKParsingState.m; sourceTree = "<group>"; };
 		F4C88A072628E395006D606A /* ZKParserResult.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ZKParserResult.h; sourceTree = "<group>"; };
@@ -64,6 +65,7 @@
 		F412B65D2543D14D00B36A77 = {
 			isa = PBXGroup;
 			children = (
+				F41EA2502696A97700CB1F90 /* ZKParser.podspec.json */,
 				F412B6682543D14D00B36A77 /* ZKParser */,
 				F412B67C2543DE0900B36A77 /* Tests */,
 				F412B6672543D14D00B36A77 /* Products */,
