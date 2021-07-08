@@ -1,9 +1,22 @@
+// Copyright (c) 2020 Simon Fell
 //
-//  ZKParser.h
-//  ZKParser
+// Permission is hereby granted, free of charge, to any person obtaining a
+// copy of this software and associated documentation files (the "Software"),
+// to deal in the Software without restriction, including without limitation
+// the rights to use, copy, modify, merge, publish, distribute, sublicense,
+// and/or sell copies of the Software, and to permit persons to whom the
+// Software is furnished to do so, subject to the following conditions:
 //
-//  Created by Simon Fell on 10/23/20.
-//  Copyright © 2020 Simon Fell. All rights reserved.
+// The above copyright notice and this permission notice shall be included
+// in all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+// OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// THE SOFTWARE.
 //
 
 #import <Foundation/Foundation.h>
@@ -13,7 +26,9 @@
 @interface ZKBaseParser : NSObject
 -(ZKParserResult*)parse:(ZKParsingState*)input;
 
+// overrides the name of the parser in the debug output.
 -(void)setDebugName:(NSString *)n;
+
 // return true if this parser is wrapping a number of child parsers.
 // this is used to indent the debug output.
 -(BOOL)containsChildParsers;
@@ -44,10 +59,10 @@ typedef ZKParserResult *(^ZKParseBlock)(ZKParsingState*input);
 -(ZKBaseParser*)eq:(NSString *)s case:(ZKCaseSensitivity)c;
 
 /// match 'min' or more consecutive characters that are in the character set.
--(ZKBaseParser*)characters:(NSCharacterSet*)set name:(NSString *)name min:(NSUInteger)minMatches;
+-(ZKBaseParser*)characters:(NSCharacterSet*)set name:(NSString *)parserName min:(NSUInteger)minMatches;
 
 /// match 'min' or more consecutive characters that are not in the supplied character set.
--(ZKBaseParser*)notCharacters:(NSCharacterSet*)set name:(NSString *)name min:(NSUInteger)minMatches;
+-(ZKBaseParser*)notCharacters:(NSCharacterSet*)set name:(NSString *)parserName min:(NSUInteger)minMatches;
 
 /// match an integer number
 -(ZKBaseParser*)integerNumber;
@@ -56,7 +71,7 @@ typedef ZKParserResult *(^ZKParseBlock)(ZKParsingState*input);
 -(ZKBaseParser*)decimalNumber;
 
 /// match a regular expression.
--(ZKBaseParser*)regex:(NSRegularExpression*)regex name:(NSString*)name;
+-(ZKBaseParser*)regex:(NSRegularExpression*)regex name:(NSString*)parserName;
 
 /// match the supplied sequence of parsers.
 -(ZKBaseParser*)seq:(NSArray<ZKBaseParser*>*)items;
@@ -77,13 +92,15 @@ typedef ZKParserResult *(^ZKParseBlock)(ZKParsingState*input);
 -(ZKBaseParser*)zeroOrMore:(ZKBaseParser*)p;
 /// one or more cosecutive occurances of the parser
 -(ZKBaseParser*)oneOrMore:(ZKBaseParser*)p;
-/// zero or more occurrances of the parer, repeated occurances separated by the supplied separater parser.
+
+/// zero or more occurrances of the parser, repeated occurances separated by the supplied separator parser.
 -(ZKBaseParser*)zeroOrMore:(ZKBaseParser*)p separator:(ZKBaseParser*)sep;
-/// one or more occurrances of the parer, repeated occurances separated by the supplied separater parser.
+/// one or more occurrances of the parser, repeated occurances separated by the supplied separator parser.
 -(ZKBaseParser*)oneOrMore:(ZKBaseParser*)p separator:(ZKBaseParser*)sep;
-/// zero to max occurrances of the parer, repeated occurances separated by the supplied separater parser.
+
+/// zero to max occurrances of the parser, repeated occurances separated by the supplied separator parser.
 -(ZKBaseParser*)zeroOrMore:(ZKBaseParser*)p separator:(ZKBaseParser*)sep max:(NSUInteger)maxItems;
-/// one to max occurrances of the parer, repeated occurances separated by the supplied separater parser.
+/// one to max occurrances of the parser, repeated occurances separated by the supplied separator parser.
 -(ZKBaseParser*)oneOrMore:(ZKBaseParser*)p separator:(ZKBaseParser*)sep max:(NSUInteger)maxItems;
 
 /// exactly zero or one matches of the supplied parser.
